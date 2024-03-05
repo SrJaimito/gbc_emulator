@@ -47,7 +47,7 @@ impl RegisterFile {
         }
     }
 
-    pub fn get_single_reg(&self, reg: SingleReg) -> u8 {
+    pub fn read_reg(&self, reg: SingleReg) -> u8 {
         match reg {
             SingleReg::A => self.a,
             SingleReg::F => self.f,
@@ -60,7 +60,7 @@ impl RegisterFile {
         }
     }
 
-    pub fn set_single_reg(&mut self, reg: SingleReg, value: u8) {
+    pub fn write_reg(&mut self, reg: SingleReg, value: u8) {
         match reg {
             SingleReg::A => self.a = value,
             SingleReg::F => self.f = value,
@@ -73,7 +73,7 @@ impl RegisterFile {
         }
     }
 
-    pub fn get_double_reg(&self, reg: DoubleReg) -> u16 {
+    pub fn read_dreg(&self, reg: DoubleReg) -> u16 {
         match reg {
             DoubleReg::AF => {
                 ((self.a as u16) << 8) | (self.f as u16)
@@ -93,7 +93,7 @@ impl RegisterFile {
         }
     }
 
-    pub fn set_double_reg(&mut self, reg: DoubleReg, value: u16) {
+    pub fn write_dreg(&mut self, reg: DoubleReg, value: u16) {
         let lsb = (value & 0xFF) as u8;
         let msb= ((value >> 8) & 0xFF) as u8;
 
@@ -160,7 +160,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_set_single_registers() {
+    fn get_write_registers() {
         let mut register_file = RegisterFile::new();
 
         register_file.a = 0x01;
@@ -172,23 +172,23 @@ mod tests {
         register_file.h = 0x07;
         register_file.l = 0x08;
 
-        assert_eq!(register_file.get_single_reg(SingleReg::A), 0x01);
-        assert_eq!(register_file.get_single_reg(SingleReg::F), 0x02);
-        assert_eq!(register_file.get_single_reg(SingleReg::B), 0x03);
-        assert_eq!(register_file.get_single_reg(SingleReg::C), 0x04);
-        assert_eq!(register_file.get_single_reg(SingleReg::D), 0x05);
-        assert_eq!(register_file.get_single_reg(SingleReg::E), 0x06);
-        assert_eq!(register_file.get_single_reg(SingleReg::H), 0x07);
-        assert_eq!(register_file.get_single_reg(SingleReg::L), 0x08);
+        assert_eq!(register_file.read_reg(SingleReg::A), 0x01);
+        assert_eq!(register_file.read_reg(SingleReg::F), 0x02);
+        assert_eq!(register_file.read_reg(SingleReg::B), 0x03);
+        assert_eq!(register_file.read_reg(SingleReg::C), 0x04);
+        assert_eq!(register_file.read_reg(SingleReg::D), 0x05);
+        assert_eq!(register_file.read_reg(SingleReg::E), 0x06);
+        assert_eq!(register_file.read_reg(SingleReg::H), 0x07);
+        assert_eq!(register_file.read_reg(SingleReg::L), 0x08);
 
-        register_file.set_single_reg(SingleReg::A, 0x09);
-        register_file.set_single_reg(SingleReg::F, 0x0A);
-        register_file.set_single_reg(SingleReg::B, 0x0B);
-        register_file.set_single_reg(SingleReg::C, 0x0C);
-        register_file.set_single_reg(SingleReg::D, 0x0D);
-        register_file.set_single_reg(SingleReg::E, 0x0E);
-        register_file.set_single_reg(SingleReg::H, 0x0F);
-        register_file.set_single_reg(SingleReg::L, 0x10);
+        register_file.write_reg(SingleReg::A, 0x09);
+        register_file.write_reg(SingleReg::F, 0x0A);
+        register_file.write_reg(SingleReg::B, 0x0B);
+        register_file.write_reg(SingleReg::C, 0x0C);
+        register_file.write_reg(SingleReg::D, 0x0D);
+        register_file.write_reg(SingleReg::E, 0x0E);
+        register_file.write_reg(SingleReg::H, 0x0F);
+        register_file.write_reg(SingleReg::L, 0x10);
 
         assert_eq!(register_file.a, 0x09);
         assert_eq!(register_file.f, 0x0A);
@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn get_set_double_registers() {
+    fn get_write_dregisters() {
         let mut register_file = RegisterFile::new();
 
         register_file.a = 0x01;
@@ -213,15 +213,15 @@ mod tests {
         register_file.h = 0x07;
         register_file.l = 0x08;
 
-        assert_eq!(register_file.get_double_reg(DoubleReg::AF), 0x0102);
-        assert_eq!(register_file.get_double_reg(DoubleReg::BC), 0x0304);
-        assert_eq!(register_file.get_double_reg(DoubleReg::DE), 0x0506);
-        assert_eq!(register_file.get_double_reg(DoubleReg::HL), 0x0708);
+        assert_eq!(register_file.read_dreg(DoubleReg::AF), 0x0102);
+        assert_eq!(register_file.read_dreg(DoubleReg::BC), 0x0304);
+        assert_eq!(register_file.read_dreg(DoubleReg::DE), 0x0506);
+        assert_eq!(register_file.read_dreg(DoubleReg::HL), 0x0708);
 
-        register_file.set_double_reg(DoubleReg::AF, 0x090A);
-        register_file.set_double_reg(DoubleReg::BC, 0x0B0C);
-        register_file.set_double_reg(DoubleReg::DE, 0x0D0E);
-        register_file.set_double_reg(DoubleReg::HL, 0x0F10);
+        register_file.write_dreg(DoubleReg::AF, 0x090A);
+        register_file.write_dreg(DoubleReg::BC, 0x0B0C);
+        register_file.write_dreg(DoubleReg::DE, 0x0D0E);
+        register_file.write_dreg(DoubleReg::HL, 0x0F10);
 
         assert_eq!(register_file.a, 0x09);
         assert_eq!(register_file.f, 0x0A);

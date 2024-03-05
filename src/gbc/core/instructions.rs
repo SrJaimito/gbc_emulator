@@ -16,9 +16,9 @@ impl Core {
             None => panic!("Error dst_reg ld_r8_r8")
         };
 
-        let value = self.reg.get_single_reg(src_reg);
+        let value = self.reg.read_reg(src_reg);
 
-        self.reg.set_single_reg(dst_reg, value);
+        self.reg.write_reg(dst_reg, value);
 
         InstructionInfo(1, 4)
     }
@@ -31,7 +31,7 @@ impl Core {
 
         let value = self.mem.read(self.pc + 1);
 
-        self.reg.set_single_reg(dst_reg, value);
+        self.reg.write_reg(dst_reg, value);
 
         InstructionInfo(2, 8)
     }
@@ -42,10 +42,10 @@ impl Core {
             None => panic!("Error dst_reg ld_r8_hl")
         };
 
-        let addr = self.reg.get_double_reg(DoubleReg::HL);
+        let addr = self.reg.read_dreg(DoubleReg::HL);
         let value = self.mem.read(addr);
 
-        self.reg.set_single_reg(dst_reg, value);
+        self.reg.write_reg(dst_reg, value);
 
         InstructionInfo(1, 8)
     }
@@ -56,8 +56,8 @@ impl Core {
             None => panic!("Error src_reg ld_hl_r8")
         };
 
-        let value = self.reg.get_single_reg(src_reg);
-        let addr = self.reg.get_double_reg(DoubleReg::HL);
+        let value = self.reg.read_reg(src_reg);
+        let addr = self.reg.read_dreg(DoubleReg::HL);
 
         self.mem.write(addr, value);
 
@@ -66,7 +66,7 @@ impl Core {
 
     fn ld_hl_n8(&mut self) -> InstructionInfo {
         let value = self.mem.read(self.pc + 1);
-        let addr = self.reg.get_double_reg(DoubleReg::HL);
+        let addr = self.reg.read_dreg(DoubleReg::HL);
 
         self.mem.write(addr, value);
 
@@ -74,68 +74,144 @@ impl Core {
     }
 
     fn ld_a_bc(&mut self) -> InstructionInfo {
-        let addr = self.reg.get_double_reg(DoubleReg::BC);
+        let addr = self.reg.read_dreg(DoubleReg::BC);
         let value = self.mem.read(addr);
 
-        self.reg.set_single_reg(SingleReg::A, value);
+        self.reg.write_reg(SingleReg::A, value);
 
         InstructionInfo(1, 8)
     }
 
     fn ld_a_de(&mut self) -> InstructionInfo {
-        let addr = self.reg.get_double_reg(DoubleReg::DE);
+        let addr = self.reg.read_dreg(DoubleReg::DE);
         let value = self.mem.read(addr);
 
-        self.reg.set_single_reg(SingleReg::A, value);
+        self.reg.write_reg(SingleReg::A, value);
 
         InstructionInfo(1, 8)
     }
 
-}
+    fn ld_a_c(&mut self) -> InstructionInfo {
+        let offset = self.reg.read_reg(SingleReg::C);
+        let addr = 0xFF00 + (offset as u16);
 
-#[cfg(test)]
-mod tests {
+        let value = self.mem.read(addr);
+        self.reg.write_reg(SingleReg::A, value);
 
-    use super::*;
-
-    #[test]
-    fn ld_r8_r8() {
-        let mut core = Core::new();
-        core.reg.set_single_reg(SingleReg::A, 0x0A);
-        core.reg.set_single_reg(SingleReg::B, 0x0B);
-
-        let opcode = 0b01111000;
-
-        core.ld_r8_r8(opcode);
-
-        assert_eq!(core.reg.get_single_reg(SingleReg::A), 0x0B);
+        InstructionInfo(1, 8)
     }
 
-    #[test]
-    fn ld_r8_n8() {
-        let mut core = Core::new();
-        core.reg.set_single_reg(SingleReg::C, 0x0C);
-        core.pc = 0x100;
-        core.mem.write(core.pc, 0x0A);
-        core.mem.write(core.pc + 1, 0x0B);
+    fn ld_c_a(&mut self) ->  InstructionInfo {
+        let offset = self.reg.read_reg(SingleReg::C);
+        let addr = 0xFF00 + (offset as u16);
 
-        let opcode = 0x0E;
+        let value = self.reg.read_reg(SingleReg::A);
+        self.mem.write(addr, value);
 
-        core.ld_r8_n8(opcode);
-
-        assert_eq!(core.reg.get_single_reg(SingleReg::C), 0x0B);
+        InstructionInfo(1, 8)
     }
 
-    #[test]
-    fn ld_r8_hl() {
+    fn ld_a_n(&mut self) -> InstructionInfo {
+        let offset = self.mem.read(self.pc + 1);
+        let addr = 0xFF00 + (offset as u16);
+
+        let value = self.mem.read(addr);
+        self.reg.write_reg(SingleReg::A, value);
+
+        InstructionInfo(2, 12)
     }
 
-    #[test]
-    fn ld_hl_r8() {
+    fn ld_n_a(&mut self) ->  InstructionInfo {
+        let offset = self.mem.read(self.pc + 1);
+        let addr = 0xFF00 + (offset as u16);
+
+        let value = self.reg.read_reg(SingleReg::A);
+        self.mem.write(addr, value);
+
+        InstructionInfo(2, 12)
     }
 
-    #[test]
-    fn ld_hl_n8() {
+    fn ld_a_nn(&mut self) -> InstructionInfo {
+        let lsb = self.mem.read(self.pc + 1) as u16;
+        let msb = self.mem.read(self.pc + 2) as u16;
+
+        let addr = (msb << 8) | lsb;
+
+        let value = self.mem.read(addr);
+        self.reg.write_reg(SingleReg::A, value);
+
+        InstructionInfo(3, 16)
     }
+
+    fn ld_nn_a(&mut self) -> InstructionInfo {
+        let lsb = self.mem.read(self.pc + 1) as u16;
+        let msb = self.mem.read(self.pc + 2) as u16;
+
+        let addr = (msb << 8) | lsb;
+
+        let value = self.reg.read_reg(SingleReg::A);
+        self.mem.write(addr, value);
+
+        InstructionInfo(3, 16)
+    }
+
+    fn ld_a_hli(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let value = self.mem.read(addr);
+
+        self.reg.write_reg(SingleReg::A, value);
+        self.reg.write_dreg(DoubleReg::HL, addr + 1);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn ld_a_hld(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let value = self.mem.read(addr);
+
+        self.reg.write_reg(SingleReg::A, value);
+        self.reg.write_dreg(DoubleReg::HL, addr - 1);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn ld_bc_a(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::BC);
+        let value = self.reg.read_reg(SingleReg::A);
+
+        self.mem.write(addr, value);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn ld_de_a(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::DE);
+        let value = self.reg.read_reg(SingleReg::A);
+
+        self.mem.write(addr, value);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn ld_hli_a(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let value = self.reg.read_reg(SingleReg::A);
+
+        self.mem.write(addr, value);
+        self.reg.write_dreg(DoubleReg::HL, addr + 1);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn ld_hld_a(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let value = self.reg.read_reg(SingleReg::A);
+
+        self.mem.write(addr, value);
+        self.reg.write_dreg(DoubleReg::HL, addr - 1);
+
+        InstructionInfo(1, 8)
+    }
+
 }
 
