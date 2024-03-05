@@ -1,5 +1,6 @@
-struct Cpu 
+mod gbc;
 
 fn main() {
     println!("Hello, world!");
 }
+
