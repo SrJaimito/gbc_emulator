@@ -20,7 +20,8 @@ impl Core {
         Self {
             reg: RegisterFile::new(),
             pc: 0,
-            sp: 0
+            sp: 0,
+            mem: Memory::new()
         }
     }
 

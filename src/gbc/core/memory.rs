@@ -10,11 +10,11 @@ impl Memory {
         }
     }
 
-    pub fn get_at(&self, addr: u16) -> u8 {
+    pub fn read(&self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 
-    pub fn set_at(&self, addr: u16, value: u8) {
+    pub fn write(&mut self, addr: u16, value: u8) {
         self.memory[addr as usize] = value;
     }
 

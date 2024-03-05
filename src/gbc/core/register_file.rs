@@ -16,6 +16,19 @@ pub enum Flag {
     Z, N, H, CY
 }
 
+pub fn map_3bit_field(opcode_field: u8) -> Option<SingleReg> {
+    match opcode_field {
+        0x07 => Some(SingleReg::A),
+        0x00 => Some(SingleReg::B),
+        0x01 => Some(SingleReg::C),
+        0x02 => Some(SingleReg::D),
+        0x03 => Some(SingleReg::E),
+        0x04 => Some(SingleReg::H),
+        0x05 => Some(SingleReg::L),
+        _ => None
+    }
+}
+
 pub struct RegisterFile {
     a: u8, f: u8,
     b: u8, c: u8,
