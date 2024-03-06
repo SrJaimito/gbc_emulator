@@ -310,7 +310,7 @@ impl Core {
 
     fn ldhl_sp_e(&mut self) -> InstructionInfo {
         let sp = self.sp as i32;
-        let e = (self.mem.read(self.pc + 1) as i8) as i32);
+        let e = (self.mem.read(self.pc + 1) as i8) as i32;
         
         let result = sp + e;
         let carry = sp ^ e ^ result;
@@ -350,6 +350,101 @@ impl Core {
         self.mem.write(addr + 1, sp_msb as u8);
 
         InstructionInfo(3, 20)
+    }
+
+    ///////////////////////////////////////////////////////////
+    //                                                       //
+    //  8-Bit Arithmetic and Logical Operation Instructions  //
+    //                                                       //
+    ///////////////////////////////////////////////////////////
+
+    fn add_a_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let src_reg = match map_3bit_field(opcode & 0x07) {
+            Some(reg) => reg,
+            None => panic!("Error src_reg add_a_r8")
+        };
+
+        let r8 = self.reg.read_reg(src_reg);
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let (result, cy) = a.overflowing_add(r8);
+        
+        self.reg.write_reg(SingleReg::A, result);
+
+        let z = result == 0;
+        let h = ((a ^ r8 ^ result) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn add_a_n8(&mut self) -> InstructionInfo {
+        let n8 = self.mem.read(self.pc + 1);
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let (result, cy) = a.overflowing_add(n8);
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        let z = result == 0;
+        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(2, 8)
+    }
+
+    fn add_a_hl(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let n8 = self.mem.read(addr);
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let (result, cy) = a.overflowing_add(n8);
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        let z = result == 0;
+        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn adc_a_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let src_reg = match opcode & 0x07 {
+            Some(reg) => reg,
+            None => panic!("Error src_reg adc_a_r8")
+        }
+
+        let a = self.reg.read_reg(SingleReg::A);
+        let r8 = self.reg.read_reg(src_reg);
+        let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
+
+        let (result, cy1) = a.overflowing_add(r8);
+        let (result_carry, cy2) = result.overflowing_add(carry);
+
+        self.reg.write_reg(SingleReg::A, result_carry);
+
+        let z = result_carry == 0;
+        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
     }
 
 }
