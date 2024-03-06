@@ -337,5 +337,20 @@ impl Core {
         InstructionInfo(2, 12)
     }
 
+    fn ld_nn_sp(&mut self) -> InstructionInfo {
+        let addr_lsb = self.mem.read(self.pc + 1) as u16;
+        let addr_msb = self.mem.read(self.pc + 2) as u16;
+
+        let addr = (addr_msb << 8) | addr_lsb;
+
+        let sp_lsb = self.sp & 0x0F;
+        let sp_msb = (self.sp >> 8) & 0x0F;
+
+        self.mem.write(addr, sp_lsb as u8);
+        self.mem.write(addr + 1, sp_msb as u8);
+
+        InstructionInfo(3, 20)
+    }
+
 }
 
