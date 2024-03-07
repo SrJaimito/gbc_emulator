@@ -300,7 +300,7 @@ impl Core {
                 self.mem.write(self.sp, self.reg.read_reg(SingleReg::F));
                 self.mem.write(self.sp + 1, self.reg.read_reg(SingleReg::A));
             },
-            _ => panic!("Error src_reg push_qq")
+            _ => panic!("Error src_reg pop_qq")
         }
 
         self.sp += 2;
@@ -422,29 +422,144 @@ impl Core {
     }
 
     fn adc_a_r8(&mut self, opcode: u8) -> InstructionInfo {
-        let src_reg = match opcode & 0x07 {
+        let src_reg = match map_3bit_field(opcode & 0x07) {
             Some(reg) => reg,
             None => panic!("Error src_reg adc_a_r8")
-        }
+        };
 
         let a = self.reg.read_reg(SingleReg::A);
         let r8 = self.reg.read_reg(src_reg);
         let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
 
-        let (result, cy1) = a.overflowing_add(r8);
+        let (result, _) = a.overflowing_add(r8);
         let (result_carry, cy2) = result.overflowing_add(carry);
 
         self.reg.write_reg(SingleReg::A, result_carry);
 
         let z = result_carry == 0;
-        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+        let h = ((a ^ r8 ^ 1u8 ^ result_carry) & 0x10) != 0;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy2);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn adc_a_n8(&mut self) -> InstructionInfo {
+        let a = self.reg.read_reg(SingleReg::A);
+        let n8 = self.mem.read(self.pc + 1);
+        let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
+
+        let (result, _) = a.overflowing_add(n8);
+        let (result_carry, cy2) = result.overflowing_add(carry);
+
+        self.reg.write_reg(SingleReg::A, result_carry);
+
+        let z = result_carry == 0;
+        let h = ((a ^ n8 ^ 1u8 ^ result_carry) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy2);
+
+        InstructionInfo(2, 8)
+    }
+
+    fn adc_a_hl(&mut self) -> InstructionInfo {
+        let addr = self.reg.read_dreg(DoubleReg::HL);
+        let n8 = self.mem.read(addr);
+
+        let a = self.reg.read_reg(SingleReg::A);
+        let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
+
+        let (result, _) = a.overflowing_add(n8);
+        let (result_carry, cy2) = result.overflowing_add(carry);
+
+        self.reg.write_reg(SingleReg::A, result_carry);
+
+        let z = result_carry == 0;
+        let h = ((a ^ n8 ^ 1u8 ^ result_carry) & 0x10) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy2);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn sub_a_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let src_reg = match map_3bit_field(opcode & 0x07) {
+            Some(reg) => reg,
+            None => panic!("Error src_reg sub_a_r8")
+        };
+
+        let r8 = self.reg.read_reg(src_reg);
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let (result, cy) = a.overflowing_sub(r8);
+        
+        self.reg.write_reg(SingleReg::A, result);
+
+        let z = result == 0;
+        let h = ((a ^ r8 ^ result) & 0x08) != 0;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, true);
+        self.reg.set_flag(Flag::H, h);
         self.reg.set_flag(Flag::CY, cy);
 
         InstructionInfo(1, 4)
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn adc_a_r8() {
+        let mut core = Core::new();
+
+        core.reg.write_reg(SingleReg::A, 0xE1);
+        core.reg.write_reg(SingleReg::E, 0x0F);
+        core.reg.set_flag(Flag::CY, true);
+
+        let opcode: u8 = 0x03;
+
+        core.adc_a_r8(opcode);
+
+        assert_eq!(core.reg.read_reg(SingleReg::A), 0xF1);
+        assert_eq!(core.reg.get_flag(Flag::Z), false);
+        assert_eq!(core.reg.get_flag(Flag::H), true);
+        assert_eq!(core.reg.get_flag(Flag::CY), false);
+
+        core.reg.write_reg(SingleReg::A, 0xE1);
+        core.reg.write_reg(SingleReg::E, 0x3B);
+        core.reg.set_flag(Flag::CY, true);
+
+        core.adc_a_r8(opcode);
+
+        assert_eq!(core.reg.read_reg(SingleReg::A), 0x1D);
+        assert_eq!(core.reg.get_flag(Flag::Z), false);
+        assert_eq!(core.reg.get_flag(Flag::H), false);
+        assert_eq!(core.reg.get_flag(Flag::CY), false);
+
+        core.reg.write_reg(SingleReg::A, 0xE1);
+        core.reg.write_reg(SingleReg::E, 0x1E);
+        core.reg.set_flag(Flag::CY, true);
+
+        core.adc_a_r8(opcode);
+
+        assert_eq!(core.reg.read_reg(SingleReg::A), 0x00);
+        assert_eq!(core.reg.get_flag(Flag::Z), true);
+        assert_eq!(core.reg.get_flag(Flag::H), true);
+        assert_eq!(core.reg.get_flag(Flag::CY), true);
     }
 
 }
