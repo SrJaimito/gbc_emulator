@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub enum SingleReg {
     A, F,
     B, C,
@@ -5,6 +6,7 @@ pub enum SingleReg {
     H, L
 }
 
+#[derive(Copy, Clone)]
 pub enum DoubleReg {
     AF,
     BC,
@@ -12,6 +14,7 @@ pub enum DoubleReg {
     HL
 }
 
+#[derive(Copy, Clone)]
 pub enum Flag {
     Z, N, H, CY
 }

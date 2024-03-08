@@ -883,7 +883,7 @@ impl Core {
         let z = result == 0;
         let h = (((n8 & 0x0F) + 1u8) & 0x10) == 0x10;
 
-        self.reg.write_reg(target_reg, result);
+        self.mem.write(addr, result);
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
@@ -923,7 +923,7 @@ impl Core {
         let z = result == 0;
         let h = (((n8 & 0x0F) - 1u8) & 0x10) == 0x10;
 
-        self.reg.write_reg(target_reg, result);
+        self.mem.write(addr, result);
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, true);
@@ -960,6 +960,8 @@ impl Core {
 
         let (h_add, _) = (hl & 0x0FFF).overflowing_add(r16 & 0x0FFF);
         let h = (h_add & 0x1000) == 0x1000;
+
+        self.reg.write_dreg(DoubleReg::HL, result);
 
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
@@ -1094,6 +1096,32 @@ mod tests {
         assert_eq!(core.reg.read_reg(SingleReg::A), 0xEB);
         assert_eq!(core.reg.get_flag(Flag::Z), false);
         assert_eq!(core.reg.get_flag(Flag::N), true);
+        assert_eq!(core.reg.get_flag(Flag::H), true);
+        assert_eq!(core.reg.get_flag(Flag::CY), true);
+    }
+
+    #[test]
+    fn add_hl_ss() {
+        let mut core = Core::new();
+
+        core.reg.write_dreg(DoubleReg::HL, 0x8A23);
+        core.reg.write_dreg(DoubleReg::BC, 0x0605);
+
+        let mut opcode: u8 = 0x00;
+
+        core.add_hl_ss(opcode);
+
+        assert_eq!(core.reg.read_dreg(DoubleReg::HL), 0x9028);
+        assert_eq!(core.reg.get_flag(Flag::H), true);
+        assert_eq!(core.reg.get_flag(Flag::CY), false);
+
+        core.reg.write_dreg(DoubleReg::HL, 0x8A23);
+
+        opcode = 0x20;
+
+        core.add_hl_ss(opcode);
+
+        assert_eq!(core.reg.read_dreg(DoubleReg::HL), 0x1446);
         assert_eq!(core.reg.get_flag(Flag::H), true);
         assert_eq!(core.reg.get_flag(Flag::CY), true);
     }
