@@ -313,19 +313,8 @@ impl Core {
         let e = (self.mem.read(self.pc + 1) as i8) as i32;
         
         let result = sp + e;
-        let carry = sp ^ e ^ result;
-
-        let h = if (carry & 0x0000_1000) != 0 {
-            true
-        } else {
-            false
-        };
-
-        let cy = if (carry & 0x0001_0000) != 0 {
-            true
-        } else {
-            false
-        };
+        let h = (((sp & 0xFFF) + (e & 0xFFF)) & 0x1000) == 0x1000;
+        let cy = (((sp & 0xFFFF) + (e & 0xFFFF)) & 0x10000) == 0x10000;
 
         self.reg.write_dreg(DoubleReg::HL, result as u16);
 
@@ -372,7 +361,7 @@ impl Core {
         self.reg.write_reg(SingleReg::A, result);
 
         let z = result == 0;
-        let h = ((a ^ r8 ^ result) & 0x10) != 0;
+        let h = (((a & 0x0F) + (r8 & 0x0F)) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
@@ -391,7 +380,7 @@ impl Core {
         self.reg.write_reg(SingleReg::A, result);
 
         let z = result == 0;
-        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+        let h = (((a & 0x0F) + (n8 & 0x0F)) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
@@ -411,7 +400,7 @@ impl Core {
         self.reg.write_reg(SingleReg::A, result);
 
         let z = result == 0;
-        let h = ((a ^ n8 ^ result) & 0x10) != 0;
+        let h = (((a & 0x0F) + (n8 & 0x0F)) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
@@ -431,18 +420,18 @@ impl Core {
         let r8 = self.reg.read_reg(src_reg);
         let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
 
-        let (result, _) = a.overflowing_add(r8);
+        let (result, cy1) = a.overflowing_add(r8);
         let (result_carry, cy2) = result.overflowing_add(carry);
 
         self.reg.write_reg(SingleReg::A, result_carry);
 
         let z = result_carry == 0;
-        let h = ((a ^ r8 ^ 1u8 ^ result_carry) & 0x10) != 0;
+        let h = (((a & 0x0F) + (r8 & 0x0F) + carry) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
-        self.reg.set_flag(Flag::CY, cy2);
+        self.reg.set_flag(Flag::CY, cy1 || cy2);
 
         InstructionInfo(1, 4)
     }
@@ -452,18 +441,18 @@ impl Core {
         let n8 = self.mem.read(self.pc + 1);
         let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
 
-        let (result, _) = a.overflowing_add(n8);
+        let (result, cy1) = a.overflowing_add(n8);
         let (result_carry, cy2) = result.overflowing_add(carry);
 
         self.reg.write_reg(SingleReg::A, result_carry);
 
         let z = result_carry == 0;
-        let h = ((a ^ n8 ^ 1u8 ^ result_carry) & 0x10) != 0;
+        let h = (((a & 0x0F) + (n8 & 0x0F) + carry) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
-        self.reg.set_flag(Flag::CY, cy2);
+        self.reg.set_flag(Flag::CY, cy1 || cy2);
 
         InstructionInfo(2, 8)
     }
@@ -475,18 +464,18 @@ impl Core {
         let a = self.reg.read_reg(SingleReg::A);
         let carry = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
 
-        let (result, _) = a.overflowing_add(n8);
+        let (result, cy1) = a.overflowing_add(n8);
         let (result_carry, cy2) = result.overflowing_add(carry);
 
         self.reg.write_reg(SingleReg::A, result_carry);
 
         let z = result_carry == 0;
-        let h = ((a ^ n8 ^ 1u8 ^ result_carry) & 0x10) != 0;
+        let h = (((a & 0x0F) + (n8 & 0x0F) + carry) & 0x10) == 0x10;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
-        self.reg.set_flag(Flag::CY, cy2);
+        self.reg.set_flag(Flag::CY, cy1 || cy2);
 
         InstructionInfo(1, 8)
     }
@@ -505,7 +494,7 @@ impl Core {
         self.reg.write_reg(SingleReg::A, result);
 
         let z = result == 0;
-        let h = ((a ^ r8 ^ result) & 0x08) != 0;
+        let h = (((!a) & r8) & 0x08) != 0;
 
         self.reg.set_flag(Flag::Z, z);
         self.reg.set_flag(Flag::N, true);
@@ -548,7 +537,7 @@ mod tests {
         assert_eq!(core.reg.read_reg(SingleReg::A), 0x1D);
         assert_eq!(core.reg.get_flag(Flag::Z), false);
         assert_eq!(core.reg.get_flag(Flag::H), false);
-        assert_eq!(core.reg.get_flag(Flag::CY), false);
+        assert_eq!(core.reg.get_flag(Flag::CY), true);
 
         core.reg.write_reg(SingleReg::A, 0xE1);
         core.reg.write_reg(SingleReg::E, 0x1E);
