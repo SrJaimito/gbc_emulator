@@ -938,6 +938,36 @@ impl Core {
     //                                            //
     ////////////////////////////////////////////////
 
+    fn add_hl_ss(&mut self, opcode: u8) -> InstructionInfo {
+        let ss = (opcode >> 4) & 0x03;
+
+        let r16 = if ss == 0x03 {
+            self.pc
+        } else {
+            let src_reg = match ss {
+                0x00 => DoubleReg::BC,
+                0x01 => DoubleReg::DE,
+                0x02 => DoubleReg::HL,
+                _ => panic!("Error src_reg add_hl_ss")
+            };
+
+            self.reg.read_dreg(src_reg)
+        };
+
+        let hl = self.reg.read_dreg(DoubleReg::HL);
+
+        let (result, cy) = hl.overflowing_add(r16);
+
+        let (h_add, _) = (hl & 0x0FFF).overflowing_add(r16 & 0x0FFF);
+        let h = (h_add & 0x1000) == 0x1000;
+
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 8)
+    }
+
 }
 
 #[cfg(test)]
