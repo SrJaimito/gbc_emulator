@@ -313,7 +313,7 @@ impl Core {
         let e = (self.mem.read(self.pc + 1) as i8) as i32;
         
         let result = sp + e;
-        let h = (((sp & 0xFFF) + (e & 0xFFF)) & 0x1000) == 0x1000;
+        let h = (((sp & 0x0FFF) + (e & 0x0FFF)) & 0x1000) == 0x1000;
         let cy = (((sp & 0xFFFF) + (e & 0xFFFF)) & 0x10000) == 0x10000;
 
         self.reg.write_dreg(DoubleReg::HL, result as u16);
@@ -966,6 +966,67 @@ impl Core {
         self.reg.set_flag(Flag::N, false);
         self.reg.set_flag(Flag::H, h);
         self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 8)
+    }
+
+    fn add_sp_e(&mut self) -> InstructionInfo {
+        let sp = self.sp as i32;
+        let e = self.mem.read(self.pc + 1) as i32;
+
+        let result = sp + e;
+
+        let h = (((sp & 0x0FFF) + (e & 0x0FFF)) & 0x1000) == 0x1000;
+        let cy = (((sp & 0xFFFF) + (e & 0xFFFF)) & 0x10000) == 0x10000;
+
+        self.sp = result as u16;
+
+        self.reg.set_flag(Flag::Z, false);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, h);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(2, 16)
+    }
+
+    fn inc_ss(&mut self, opcode: u8) -> InstructionInfo {
+        let ss = (opcode >> 4) & 0x03;
+
+        if ss == 0x03 {
+            let (result, _) = self.pc.overflowing_add(1u16);
+            self.pc = result;
+        } else {
+            let target_reg = match ss {
+                0x00 => DoubleReg::BC,
+                0x01 => DoubleReg::DE,
+                0x02 => DoubleReg::HL,
+                _ => panic!("Error target_reg inc_ss")
+            };
+
+            let (result, _) = self.reg.read_dreg(target_reg).overflowing_add(1u16);
+            self.reg.write_dreg(target_reg, result);
+        }
+
+        InstructionInfo(1, 8)
+    }
+
+    fn dec_ss(&mut self, opcode: u8) -> InstructionInfo {
+        let ss = (opcode >> 4) & 0x03;
+
+        if ss == 0x03 {
+            let (result, _) = self.pc.overflowing_sub(1u16);
+            self.pc = result;
+        } else {
+            let target_reg = match ss {
+                0x00 => DoubleReg::BC,
+                0x01 => DoubleReg::DE,
+                0x02 => DoubleReg::HL,
+                _ => panic!("Error target_reg inc_ss")
+            };
+
+            let (result, _) = self.reg.read_dreg(target_reg).overflowing_sub(1u16);
+            self.reg.write_dreg(target_reg, result);
+        }
 
         InstructionInfo(1, 8)
     }
