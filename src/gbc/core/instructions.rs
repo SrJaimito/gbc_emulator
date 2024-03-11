@@ -5,6 +5,10 @@ pub struct InstructionInfo(u8, u8);
 
 impl Core {
 
+    fn prefix(&self) -> InstructionInfo {
+        InstructionInfo(1, 4)
+    }
+
     ///////////////////////////////////
     //                               //
     //  8-Bit Transfer Instructions  //
@@ -1031,6 +1035,136 @@ impl Core {
         InstructionInfo(1, 8)
     }
 
+    /////////////////////////////////
+    //                             //
+    //  Rotate Shift Instructions  //
+    //                             //
+    /////////////////////////////////
+
+    fn rlca(&mut self) -> InstructionInfo {
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let result = (a << 1) | (a >> 7);
+
+        let cy = if (a >> 7) == 0x01 {
+            true
+        } else {
+            false
+        };
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        self.reg.set_flag(Flag::Z, false);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, false);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn rla(&mut self) -> InstructionInfo {
+        let a = self.reg.read_reg(SingleReg::A);
+        let a0 = if self.reg.get_flag(Flag::CY) { 1u8 } else { 0u8 };
+
+        let result = (a << 1) | a0;
+
+        let cy = if (a >> 7) == 0x01 {
+            true
+        } else {
+            false
+        };
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        self.reg.set_flag(Flag::Z, false);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, false);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn rrca(&mut self) -> InstructionInfo {
+        let a = self.reg.read_reg(SingleReg::A);
+
+        let result = (a >> 1) | (a << 7);
+
+        let cy = if (a & 0x01) == 0x01 {
+            true
+        } else {
+            false
+        };
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        self.reg.set_flag(Flag::Z, false);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, false);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn rra(&mut self) -> InstructionInfo {
+        let a = self.reg.read_reg(SingleReg::A);
+        let a7 = if self.reg.get_flag(Flag::CY) { 0x80u8 } else { 0u8 };
+
+        let result = (a >> 1) | a7;
+
+        let cy = if (a & 0x01) == 0x01 {
+            true
+        } else {
+            false
+        };
+
+        self.reg.write_reg(SingleReg::A, result);
+
+        self.reg.set_flag(Flag::Z, false);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, false);
+        self.reg.set_flag(Flag::CY, cy);
+
+        InstructionInfo(1, 4)
+    }
+
+    fn rlc(&mut self) -> InstructionInfo {
+        let source = self.mem.read(self.pc + 1);
+        
+        let mut src_reg = SingleReg::A;
+        let mut addr = 0u16;
+
+        let m = if source != 0x06 {
+            src_reg = match map_3bit_field(source) {
+                Some(reg) => reg,
+                None => panic!("Error src_reg rlc")
+            };
+
+            self.reg.read_reg(src_reg)
+
+        } else {
+            addr = self.reg.read_dreg(DoubleReg::HL);
+            self.mem.read(addr)
+        };
+
+        let result = (m << 1) | (m >> 7);
+
+        let z = result == 0;
+        let cy = (m >> 7) == 0x01;
+
+        self.reg.set_flag(Flag::Z, z);
+        self.reg.set_flag(Flag::N, false);
+        self.reg.set_flag(Flag::H, false);
+        self.reg.set_flag(Flag::CY, cy);
+
+        if source != 0x06 {
+            self.reg.write_reg(src_reg, result);
+            InstructionInfo(2, 8)
+        } else {
+            self.mem.write(addr, result);
+            InstructionInfo(2, 16)
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -1184,6 +1318,19 @@ mod tests {
 
         assert_eq!(core.reg.read_dreg(DoubleReg::HL), 0x1446);
         assert_eq!(core.reg.get_flag(Flag::H), true);
+        assert_eq!(core.reg.get_flag(Flag::CY), true);
+    }
+
+    #[test]
+    fn rlca() {
+        let mut core = Core::new();
+
+        core.reg.write_reg(SingleReg::A, 0x85);
+        core.reg.set_flag(Flag::CY, false);
+
+        core.rlca();
+
+        assert_eq!(core.reg.read_reg(SingleReg::A), 0x0B);
         assert_eq!(core.reg.get_flag(Flag::CY), true);
     }
 
