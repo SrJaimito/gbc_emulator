@@ -6,12 +6,35 @@ pub enum Reg8 {
     H, L
 }
 
+pub fn map_r8(bit_field: u8) -> Reg8 {
+    match bit_field {
+        0x00 => Reg8::B,
+        0x01 => Reg8::C,
+        0x02 => Reg8::D,
+        0x03 => Reg8::E,
+        0x04 => Reg8::H,
+        0x05 => Reg8::L,
+        0x07 => Reg8::A,
+        _ => panic!("Error map_r8")
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum Reg16 {
     AF,
     BC,
     DE,
     HL
+}
+
+pub fn map_r16stk(bit_field: u8) -> Reg16 {
+    match bit_field {
+        0x00 => Reg16::BC,
+        0x01 => Reg16::DE,
+        0x02 => Reg16::HL,
+        0x03 => Reg16::AF,
+        _ => panic!("Error map_r16stk")
+    }
 }
 
 #[derive(Copy, Clone)]
