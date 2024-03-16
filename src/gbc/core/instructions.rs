@@ -257,5 +257,49 @@ impl Core {
         unimplemented!()
     }
 
+    pub fn rlc_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn rrc_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn rl_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn rr_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn sla_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn sra_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn swap_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn srl_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn bit_b3_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn res_b3_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
+    pub fn set_b3_r8(&self, opcode: u8) {
+        unimplemented!()
+    }
+
 }
 
