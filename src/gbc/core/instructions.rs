@@ -241,7 +241,7 @@ impl Core {
         unimplemented!()
     }
 
-    pub fn ls_hl_sp_imm8(&self) -> InstructionInfo {
+    pub fn ld_hl_sp_imm8(&self) -> InstructionInfo {
         unimplemented!()
     }
 
