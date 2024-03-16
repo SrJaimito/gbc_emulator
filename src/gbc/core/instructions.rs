@@ -1,5 +1,5 @@
 use super::Core;
-use super::register_file::{SingleReg, DoubleReg, map_3bit_field, Flag};
+use super::register_file::{Reg8, Reg16, Flag};
 
 pub struct InstructionInfo(u8, u8);
 
@@ -225,7 +225,7 @@ impl Core {
         unimplemented!()
     }
 
-    pub fn ldh_a_d(&self) -> InstructionInfo {
+    pub fn ldh_a_c(&self) -> InstructionInfo {
         unimplemented!()
     }
 
