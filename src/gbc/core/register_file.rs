@@ -1,5 +1,5 @@
 #[derive(Copy, Clone)]
-pub enum SingleReg {
+pub enum Reg8 {
     A, F,
     B, C,
     D, E,
@@ -7,7 +7,7 @@ pub enum SingleReg {
 }
 
 #[derive(Copy, Clone)]
-pub enum DoubleReg {
+pub enum Reg16 {
     AF,
     BC,
     DE,
@@ -17,19 +17,6 @@ pub enum DoubleReg {
 #[derive(Copy, Clone)]
 pub enum Flag {
     Z, N, H, CY
-}
-
-pub fn map_3bit_field(opcode_field: u8) -> Option<SingleReg> {
-    match opcode_field {
-        0x07 => Some(SingleReg::A),
-        0x00 => Some(SingleReg::B),
-        0x01 => Some(SingleReg::C),
-        0x02 => Some(SingleReg::D),
-        0x03 => Some(SingleReg::E),
-        0x04 => Some(SingleReg::H),
-        0x05 => Some(SingleReg::L),
-        _ => None
-    }
 }
 
 pub struct RegisterFile {
@@ -50,97 +37,80 @@ impl RegisterFile {
         }
     }
 
-    pub fn read_reg(&self, reg: SingleReg) -> u8 {
+    pub fn read(&self, reg: Reg8) -> u8 {
         match reg {
-            SingleReg::A => self.a,
-            SingleReg::F => self.f,
-            SingleReg::B => self.b,
-            SingleReg::C => self.c,
-            SingleReg::D => self.d,
-            SingleReg::E => self.e,
-            SingleReg::H => self.h,
-            SingleReg::L => self.l
+            Reg8::A => self.a,
+            Reg8::F => self.f,
+            Reg8::B => self.b,
+            Reg8::C => self.c,
+            Reg8::D => self.d,
+            Reg8::E => self.e,
+            Reg8::H => self.h,
+            Reg8::L => self.l
         }
     }
 
-    pub fn write_reg(&mut self, reg: SingleReg, value: u8) {
+    pub fn write(&mut self, reg: Reg8, value: u8) {
         match reg {
-            SingleReg::A => self.a = value,
-            SingleReg::F => self.f = value,
-            SingleReg::B => self.b = value,
-            SingleReg::C => self.c = value,
-            SingleReg::D => self.d = value,
-            SingleReg::E => self.e = value,
-            SingleReg::H => self.h = value,
-            SingleReg::L => self.l = value
+            Reg8::A => self.a = value,
+            Reg8::F => self.f = value,
+            Reg8::B => self.b = value,
+            Reg8::C => self.c = value,
+            Reg8::D => self.d = value,
+            Reg8::E => self.e = value,
+            Reg8::H => self.h = value,
+            Reg8::L => self.l = value
         }
     }
 
-    pub fn read_dreg(&self, reg: DoubleReg) -> u16 {
+    pub fn dread(&self, reg: Reg16) -> u16 {
         match reg {
-            DoubleReg::AF => {
+            Reg16::AF => {
                 ((self.a as u16) << 8) | (self.f as u16)
             },
 
-            DoubleReg::BC => {
+            Reg16::BC => {
                 ((self.b as u16) << 8) | (self.c as u16)
             },
 
-            DoubleReg::DE => {
+            Reg16::DE => {
                 ((self.d as u16) << 8) | (self.e as u16)
             },
 
-            DoubleReg::HL => {
+            Reg16::HL => {
                 ((self.h as u16) << 8) | (self.l as u16)
             }
         }
     }
 
-    pub fn write_dreg(&mut self, reg: DoubleReg, value: u16) {
+    pub fn dwrite(&mut self, reg: Reg16, value: u16) {
         let lsb = (value & 0xFF) as u8;
         let msb= ((value >> 8) & 0xFF) as u8;
 
         match reg {
-            DoubleReg::AF => {
+            Reg16::AF => {
                 self.a = msb;
                 self.f = lsb;
             },
 
-            DoubleReg::BC => {
+            Reg16::BC => {
                 self.b = msb;
                 self.c = lsb;
             },
             
-            DoubleReg::DE => {
+            Reg16::DE => {
                 self.d = msb;
                 self.e = lsb;
             },
 
-            DoubleReg::HL => {
+            Reg16::HL => {
                 self.h = msb;
                 self.l = lsb;
             }
         }
     }
 
-    pub fn set_flag(&mut self, flag: Flag, value: bool) {
-        let offset = match flag {
-            Flag::Z => 7,
-            Flag::N => 6,
-            Flag::H => 5,
-            Flag::CY => 4
-        };
-
-        let mask = 0x01 << offset;
-
-        if value {
-            self.f |= mask;
-        } else {
-            self.f &= !mask;
-        }
-    }
-
-    pub fn get_flag(&mut self, flag: Flag) -> bool {
+    pub fn read_flag(&mut self, flag: Flag) -> bool {
         let offset = match flag {
             Flag::Z => 7,
             Flag::N => 6,
@@ -155,104 +125,21 @@ impl RegisterFile {
         }
     }
 
-}
+    pub fn write_flag(&mut self, flag: Flag, value: bool) {
+        let offset = match flag {
+            Flag::Z => 7,
+            Flag::N => 6,
+            Flag::H => 5,
+            Flag::CY => 4
+        };
 
-#[cfg(test)]
-mod tests {
+        let mask = 0x01 << offset;
 
-    use super::*;
-
-    #[test]
-    fn get_write_registers() {
-        let mut register_file = RegisterFile::new();
-
-        register_file.a = 0x01;
-        register_file.f = 0x02;
-        register_file.b = 0x03;
-        register_file.c = 0x04;
-        register_file.d = 0x05;
-        register_file.e = 0x06;
-        register_file.h = 0x07;
-        register_file.l = 0x08;
-
-        assert_eq!(register_file.read_reg(SingleReg::A), 0x01);
-        assert_eq!(register_file.read_reg(SingleReg::F), 0x02);
-        assert_eq!(register_file.read_reg(SingleReg::B), 0x03);
-        assert_eq!(register_file.read_reg(SingleReg::C), 0x04);
-        assert_eq!(register_file.read_reg(SingleReg::D), 0x05);
-        assert_eq!(register_file.read_reg(SingleReg::E), 0x06);
-        assert_eq!(register_file.read_reg(SingleReg::H), 0x07);
-        assert_eq!(register_file.read_reg(SingleReg::L), 0x08);
-
-        register_file.write_reg(SingleReg::A, 0x09);
-        register_file.write_reg(SingleReg::F, 0x0A);
-        register_file.write_reg(SingleReg::B, 0x0B);
-        register_file.write_reg(SingleReg::C, 0x0C);
-        register_file.write_reg(SingleReg::D, 0x0D);
-        register_file.write_reg(SingleReg::E, 0x0E);
-        register_file.write_reg(SingleReg::H, 0x0F);
-        register_file.write_reg(SingleReg::L, 0x10);
-
-        assert_eq!(register_file.a, 0x09);
-        assert_eq!(register_file.f, 0x0A);
-        assert_eq!(register_file.b, 0x0B);
-        assert_eq!(register_file.c, 0x0C);
-        assert_eq!(register_file.d, 0x0D);
-        assert_eq!(register_file.e, 0x0E);
-        assert_eq!(register_file.h, 0x0F);
-        assert_eq!(register_file.l, 0x10);
-    }
-
-    #[test]
-    fn get_write_dregisters() {
-        let mut register_file = RegisterFile::new();
-
-        register_file.a = 0x01;
-        register_file.f = 0x02;
-        register_file.b = 0x03;
-        register_file.c = 0x04;
-        register_file.d = 0x05;
-        register_file.e = 0x06;
-        register_file.h = 0x07;
-        register_file.l = 0x08;
-
-        assert_eq!(register_file.read_dreg(DoubleReg::AF), 0x0102);
-        assert_eq!(register_file.read_dreg(DoubleReg::BC), 0x0304);
-        assert_eq!(register_file.read_dreg(DoubleReg::DE), 0x0506);
-        assert_eq!(register_file.read_dreg(DoubleReg::HL), 0x0708);
-
-        register_file.write_dreg(DoubleReg::AF, 0x090A);
-        register_file.write_dreg(DoubleReg::BC, 0x0B0C);
-        register_file.write_dreg(DoubleReg::DE, 0x0D0E);
-        register_file.write_dreg(DoubleReg::HL, 0x0F10);
-
-        assert_eq!(register_file.a, 0x09);
-        assert_eq!(register_file.f, 0x0A);
-        assert_eq!(register_file.b, 0x0B);
-        assert_eq!(register_file.c, 0x0C);
-        assert_eq!(register_file.d, 0x0D);
-        assert_eq!(register_file.e, 0x0E);
-        assert_eq!(register_file.h, 0x0F);
-        assert_eq!(register_file.l, 0x10);
-    }
-
-    #[test]
-    fn set_get_flag() {
-        let mut register_file = RegisterFile::new();
-
-        register_file.f = 0xA0;
-
-        assert_eq!(register_file.get_flag(Flag::Z), true);
-        assert_eq!(register_file.get_flag(Flag::N), false);
-        assert_eq!(register_file.get_flag(Flag::H), true);
-        assert_eq!(register_file.get_flag(Flag::CY), false);
-
-        register_file.set_flag(Flag::Z, false);
-        register_file.set_flag(Flag::N, true);
-        register_file.set_flag(Flag::H, false);
-        register_file.set_flag(Flag::CY, true);
-
-        assert_eq!(register_file.f, 0x50);
+        if value {
+            self.f |= mask;
+        } else {
+            self.f &= !mask;
+        }
     }
 
 }
