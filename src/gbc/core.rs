@@ -11,7 +11,11 @@ struct Core {
 
     pc: u16,
     sp: u16,
+
     prefix_enabled: bool,
+
+    ime_enabled: bool,
+    ime_enable_request: bool,
 
     mem: Memory
 }
@@ -24,11 +28,13 @@ impl Core {
             pc: 0,
             sp: 0,
             prefix_enabled: false,
+            ime_enabled: true,
+            ime_enable_request: false,
             mem: Memory::new()
         }
     }
 
-    pub fn execute(&self, opcode: u8) -> InstructionInfo {
+    pub fn execute(&mut self, opcode: u8) -> InstructionInfo {
         if self.prefix_enabled {
             // Test bits 7-6
             match opcode >> 6 {
