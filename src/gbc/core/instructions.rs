@@ -951,12 +951,53 @@ impl Core {
         unimplemented!()
     }
 
-    pub fn call_cond_imm16(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn call_cond_imm16(&mut self, opcode: u8) -> InstructionInfo {
+        match (opcode >> 3) & 0x03 {
+            0x00 => {
+                if !self.reg.read_flag(Flag::Z) {
+                    return self.call_imm16();
+                }
+            },
+            0x01 => {
+                if self.reg.read_flag(Flag::Z) {
+                    return self.call_imm16();
+                }
+            },
+            0x02 => {
+                if !self.reg.read_flag(Flag::CY) {
+                    return self.call_imm16();
+                }
+            },
+            0x03 => {
+                if self.reg.read_flag(Flag::CY) {
+                    return self.call_imm16();
+                }
+            },
+            _ => panic!("Error call_cond_imm16")
+        }
+
+        InstructionInfo(3, 3)
     }
 
-    pub fn call_imm16(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn call_imm16(&mut self) -> InstructionInfo {
+        let return_addr = self.pc + 3;
+
+        let return_addr_lsb = return_addr & 0x00FF;
+        let return_addr_msb = return_addr >> 8;
+
+        self.mem.write(self.sp - 1, return_addr_lsb as u8);
+        self.mem.write(self.sp - 2, return_addr_msb as u8);
+
+        self.sp -= 2;
+
+        let jump_addr_lsb = self.mem.read(self.pc + 1) as u16;
+        let jump_addr_msb = self.mem.read(self.pc + 2) as u16;
+
+        let jump_addr = (jump_addr_msb << 8) | jump_addr_lsb;
+
+        self.pc = jump_addr;
+
+        InstructionInfo(0, 6)
     }
 
     pub fn rst_tgt3(&self, opcode: u8) -> InstructionInfo {
