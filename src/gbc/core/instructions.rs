@@ -1010,43 +1010,120 @@ impl Core {
         InstructionInfo(1, 1)
     }
 
-    pub fn ldh_c_a(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ldh_c_a(&mut self) -> InstructionInfo {
+        let a = self.reg.read(Reg8::A);
+        let c = self.reg.read(Reg8::C) as u16;
+        let addr = 0xFF00 + c;
+
+        self.mem.write(addr, a);
+
+        InstructionInfo(1, 2)
     }
 
-    pub fn ldh_imm8_a(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ldh_imm8_a(&mut self) -> InstructionInfo {
+        let a = self.reg.read(Reg8::A);
+        let imm = self.mem.read(self.pc + 1) as u16;
+        let addr = 0xFF00 + imm;
+
+        self.mem.write(addr, a);
+
+        InstructionInfo(2, 3)
     }
 
-    pub fn ld_imm16_a(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ld_imm16_a(&mut self) -> InstructionInfo {
+        let addr_lsb = self.mem.read(self.pc + 1) as u16;
+        let addr_msb = self.mem.read(self.pc + 2) as u16;
+
+        let addr = (addr_msb << 8) | addr_lsb;
+
+        let a = self.reg.read(Reg8::A);
+
+        self.mem.write(addr, a);
+
+        InstructionInfo(3, 4)
     }
 
-    pub fn ldh_a_c(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ldh_a_c(&mut self) -> InstructionInfo {
+        let c = self.reg.read(Reg8::C) as u16;
+        let addr = 0xFF00 + c;
+        let value = self.mem.read(addr);
+
+        self.reg.write(Reg8::A, value);
+
+        InstructionInfo(1, 2)
     }
 
-    pub fn ldh_a_imm8(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ldh_a_imm8(&mut self) -> InstructionInfo {
+        let imm = self.mem.read(self.pc + 1) as u16;
+        let addr = 0xFF00 + imm;
+        let value = self.mem.read(addr);
+
+        self.reg.write(Reg8::A, value);
+
+        InstructionInfo(2, 3)
     }
 
-    pub fn ld_a_imm16(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ld_a_imm16(&mut self) -> InstructionInfo {
+        let addr_lsb = self.mem.read(self.pc + 1) as u16;
+        let addr_msb = self.mem.read(self.pc + 2) as u16;
+
+        let addr = (addr_msb << 8) | addr_lsb;
+
+        let value = self.mem.read(addr);
+
+        self.reg.write(Reg8::A, value);
+
+        InstructionInfo(3, 4)
     }
 
-    pub fn add_sp_imm8(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn add_sp_imm8(&mut self) -> InstructionInfo {
+        let sp = self.sp as i32;
+        let imm = self.mem.read(self.pc + 1) as i32;
+
+        let result = sp + imm;
+
+        let h = ((sp & 0xF) + (imm & 0xF)) & 0x10 == 0x10;
+        let cy = ((sp & 0xFF) + (imm & 0xFF)) & 0x100 == 0x100;
+
+        self.sp = result as u16;
+
+        self.reg.write_flag(Flag::Z, false);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, h);
+        self.reg.write_flag(Flag::CY, cy);
+
+        InstructionInfo(2, 4)
     }
 
-    pub fn ld_hl_sp_imm8(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ld_hl_sp_imm8(&mut self) -> InstructionInfo {
+        let sp = self.sp as i32;
+        let imm = self.mem.read(self.pc + 1) as i32;
+
+        let result = sp + imm;
+
+        let h = ((sp & 0xF) + (imm & 0xF)) & 0x10 == 0x10;
+        let cy = ((sp & 0xFF) + (imm & 0xFF)) & 0x100 == 0x100;
+
+        self.reg.dwrite(Reg16::HL, result as u16);
+
+        self.reg.write_flag(Flag::Z, false);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, h);
+        self.reg.write_flag(Flag::CY, cy);
+
+        InstructionInfo(2, 3)
     }
 
-    pub fn ld_sp_hl(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ld_sp_hl(&mut self) -> InstructionInfo {
+        let hl = self.reg.dread(Reg16::HL);
+
+        self.sp = hl;
+
+        InstructionInfo(1, 2)
     }
 
     pub fn di(&mut self) -> InstructionInfo {
+        // IME has to be cleared right now
         self.ime_enabled = false;
         self.ime_enable_request = 0;
 
