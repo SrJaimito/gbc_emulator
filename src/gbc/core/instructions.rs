@@ -1137,7 +1137,7 @@ impl Core {
         InstructionInfo(1, 1)
     }
 
-    pub fn rlc_r8(&self, opcode: u8) -> InstructionInfo {
+    pub fn rlc_r8(&mut self, opcode: u8) -> InstructionInfo {
         let r8_bit_field = opcode & 0x07;
 
         let cycles = if r8_bit_field == 0x06 {
@@ -1181,7 +1181,7 @@ impl Core {
         InstructionInfo(1, cycles)
     }
 
-    pub fn rrc_r8(&self, opcode: u8) -> InstructionInfo {
+    pub fn rrc_r8(&mut self, opcode: u8) -> InstructionInfo {
         let r8_bit_field = opcode & 0x07;
 
         let cycles = if r8_bit_field == 0x06 {
