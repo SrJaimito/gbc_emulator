@@ -1225,12 +1225,96 @@ impl Core {
         InstructionInfo(1, cycles)
     }
 
-    pub fn rl_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn rl_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let r8_bit_field = opcode & 0x07;
+
+        let mut cy = if self.reg.read_flag(Flag::CY) {
+            1u8
+        } else {
+            0u8
+        };
+
+
+        let cycles = if r8_bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+            
+            let result = (b << 7) | cy;
+            let z = result == 0;
+            cy = b >> 7;
+
+            self.mem.write(addr, result);
+
+            self.reg.write_flag(Flag::Z, z);
+
+            4
+
+        } else {
+            let target_reg = map_r8(r8_bit_field);
+            let b = self.reg.read(target_reg);
+
+            let result = (b << 7) | cy;
+            let z = result == 0;
+            cy = b >> 7;
+
+            self.reg.write(target_reg, result);
+
+            self.reg.write_flag(Flag::Z, z);
+
+            2
+        };
+
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, cy == 0x01);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn rr_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn rr_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let r8_bit_field = opcode & 0x07;
+
+        let mut cy = if self.reg.read_flag(Flag::CY) {
+            0x80u8
+        } else {
+            0u8
+        };
+
+
+        let cycles = if r8_bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+            
+            let result = cy | (b >> 7);
+            let z = result == 0;
+            cy = b & 0x01;
+
+            self.mem.write(addr, result);
+
+            self.reg.write_flag(Flag::Z, z);
+
+            4
+
+        } else {
+            let target_reg = map_r8(r8_bit_field);
+            let b = self.reg.read(target_reg);
+
+            let result = cy | (b >> 7);
+            let z = result == 0;
+            cy = b & 0x01;
+
+            self.reg.write(target_reg, result);
+
+            self.reg.write_flag(Flag::Z, z);
+
+            2
+        };
+
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, cy == 0x01);
+
+        InstructionInfo(1, cycles)
     }
 
     pub fn sla_r8(&self, opcode: u8) -> InstructionInfo {
