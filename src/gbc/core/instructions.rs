@@ -1239,7 +1239,7 @@ impl Core {
             let addr = self.reg.dread(Reg16::HL);
             let b = self.mem.read(addr);
             
-            let result = (b << 7) | cy;
+            let result = (b << 1) | cy;
             let z = result == 0;
             cy = b >> 7;
 
@@ -1253,7 +1253,7 @@ impl Core {
             let target_reg = map_r8(r8_bit_field);
             let b = self.reg.read(target_reg);
 
-            let result = (b << 7) | cy;
+            let result = (b << 1) | cy;
             let z = result == 0;
             cy = b >> 7;
 
@@ -1285,7 +1285,7 @@ impl Core {
             let addr = self.reg.dread(Reg16::HL);
             let b = self.mem.read(addr);
             
-            let result = cy | (b >> 7);
+            let result = cy | (b >> 1);
             let z = result == 0;
             cy = b & 0x01;
 
@@ -1299,7 +1299,7 @@ impl Core {
             let target_reg = map_r8(r8_bit_field);
             let b = self.reg.read(target_reg);
 
-            let result = cy | (b >> 7);
+            let result = cy | (b >> 1);
             let z = result == 0;
             cy = b & 0x01;
 
@@ -1317,32 +1317,238 @@ impl Core {
         InstructionInfo(1, cycles)
     }
 
-    pub fn sla_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn sla_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_field = opcode & 0x07;
+
+        let (z, cy, cycles) = if bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+
+            let result = b << 1;
+
+            let z = result == 0;
+            let cy = (b >> 7) == 0x01;
+
+            self.mem.write(addr, result);
+
+            (z, cy, 4)
+
+        } else {
+            let target_reg = map_r8(bit_field);
+            let b = self.reg.read(target_reg);
+
+            let result = b << 1;
+
+            let z = result == 0;
+            let cy = (b >> 7) == 0x01;
+
+            self.reg.write(target_reg, result);
+
+            (z, cy, 2)
+        };
+
+        self.reg.write_flag(Flag::Z, z);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, cy);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn sra_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn sra_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_field = opcode & 0x07;
+
+        let (z, cy, cycles) = if bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+
+            let result = (b & 0x80) | (b >> 1);
+
+            let z = result == 0;
+            let cy = (b & 0x01) == 0x01;
+
+            self.mem.write(addr, result);
+
+            (z, cy, 4)
+
+        } else {
+            let target_reg = map_r8(bit_field);
+            let b = self.reg.read(target_reg);
+
+            let result = (b & 0x80) | (b >> 1);
+
+            let z = result == 0;
+            let cy = (b & 0x01) == 0x01;
+
+            self.reg.write(target_reg, result);
+
+            (z, cy, 2)
+        };
+
+        self.reg.write_flag(Flag::Z, z);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, cy);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn swap_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn swap_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_field = opcode & 0x07;
+
+        let (z, cycles) = if bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let value = self.mem.read(addr);
+
+            let lsb = value & 0x0F;
+            let msb = value & 0xF0;
+
+            let result = (lsb << 4) | (msb >> 4);
+            let z = result == 0;
+
+            self.mem.write(addr, result);
+
+            (z, 4)
+
+        } else {
+            let target_reg = map_r8(bit_field);
+            let value = self.reg.read(target_reg);
+
+            let lsb = value & 0x0F;
+            let msb = value & 0xF0;
+
+            let result = (lsb << 4) | (msb >> 4);
+            let z = result == 0;
+
+            self.reg.write(target_reg, result);
+
+            (z, 2)
+        };
+
+        self.reg.write_flag(Flag::Z, z);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, false);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn srl_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn srl_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_field = opcode & 0x07;
+
+        let (z, cy, cycles) = if bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+
+            let result = b >> 1;
+
+            let z = result == 0;
+            let cy = (b & 0x01) == 0x01;
+
+            self.mem.write(addr, result);
+
+            (z, cy, 4)
+
+        } else {
+            let target_reg = map_r8(bit_field);
+            let b = self.reg.read(target_reg);
+
+            let result = b >> 1;
+
+            let z = result == 0;
+            let cy = (b & 0x01) == 0x01;
+
+            self.reg.write(target_reg, result);
+
+            (z, cy, 2)
+        };
+
+        self.reg.write_flag(Flag::Z, z);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+        self.reg.write_flag(Flag::CY, cy);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn bit_b3_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn bit_b3_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_index = (opcode >> 3) & 0x07;
+        let operand = opcode & 0x07;
+
+        let (value, cycles) = if operand == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+
+            (self.mem.read(addr), 3)
+
+        } else {
+            let target_reg = map_r8(operand);
+
+            (self.reg.read(target_reg), 2)
+        };
+
+        let z = (value >> bit_index) & 0x01 == 0x01;
+
+        self.reg.write_flag(Flag::Z, z);
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, true);
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn res_b3_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn res_b3_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_index = (opcode >> 3) & 0x07;
+        let operand = opcode & 0x07;
+
+        let cycles = if operand == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let mut value = self.mem.read(addr);
+
+            value &= !(1u8 << bit_index);
+
+            self.mem.write(addr, value);
+
+            4
+
+        } else {
+            let target_reg = map_r8(operand);
+            let mut value = self.reg.read(target_reg);
+
+            value &= !(1u8 << bit_index);
+
+            self.reg.write(target_reg, value);
+
+            2
+        };
+
+        InstructionInfo(1, cycles)
     }
 
-    pub fn set_b3_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn set_b3_r8(&mut self, opcode: u8) -> InstructionInfo {
+        let bit_index = (opcode >> 3) & 0x07;
+        let operand = opcode & 0x07;
+
+        let cycles = if operand == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let mut value = self.mem.read(addr);
+
+            value |= 1u8 << bit_index;
+
+            self.mem.write(addr, value);
+
+            4
+
+        } else {
+            let target_reg = map_r8(operand);
+            let mut value = self.reg.read(target_reg);
+
+            value |= !1u8 << bit_index;
+
+            self.reg.write(target_reg, value);
+
+            2
+        };
+
+        InstructionInfo(1, cycles)
     }
 
 }
