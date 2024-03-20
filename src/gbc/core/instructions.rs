@@ -1182,7 +1182,47 @@ impl Core {
     }
 
     pub fn rrc_r8(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+        let r8_bit_field = opcode & 0x07;
+
+        let cycles = if r8_bit_field == 0x06 {
+            let addr = self.reg.dread(Reg16::HL);
+            let b = self.mem.read(addr);
+
+            let b0 = b & 0x01;
+
+            let result = (b0 << 7) | (b >> 1);
+            let z = result == 0;
+            let cy = b0 == 0x01;
+
+            self.mem.write(addr, result);
+
+            self.reg.write_flag(Flag::Z, z);
+            self.reg.write_flag(Flag::CY, cy);
+
+            4
+
+        } else {
+            let target_reg = map_r8(r8_bit_field);
+            let b = self.reg.read(target_reg);
+
+            let b0 = b & 0x01;
+
+            let result = (b0 << 7) | (b >> 1);
+            let z = result == 0;
+            let cy = b0 == 0x01;
+
+            self.reg.write(target_reg, result);
+
+            self.reg.write_flag(Flag::Z, z);
+            self.reg.write_flag(Flag::CY, cy);
+
+            2
+        };
+
+        self.reg.write_flag(Flag::N, false);
+        self.reg.write_flag(Flag::H, false);
+
+        InstructionInfo(1, cycles)
     }
 
     pub fn rl_r8(&self, opcode: u8) -> InstructionInfo {
