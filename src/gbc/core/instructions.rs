@@ -963,12 +963,45 @@ impl Core {
         unimplemented!()
     }
 
-    pub fn pop_r16stk(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn pop_r16stk(&mut self, opcode: u8) -> InstructionInfo {
+        let dst_reg = match (opcode >> 4) & 0x03 {
+            0x00 => Reg16::BC,
+            0x01 => Reg16::DE,
+            0x02 => Reg16::HL,
+            0x03 => Reg16::AF,
+            _ => panic!("Error pop_r16stk")
+        };
+
+        let lsb = self.mem.read(self.sp) as u16;
+        let msb = self.mem.read(self.sp + 1) as u16;
+
+        let value = (msb << 8) | lsb;
+
+        self.reg.dwrite(dst_reg, value);
+        self.sp += 2;
+
+        InstructionInfo(1, 3)
     }
 
-    pub fn push_r16stk(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn push_r16stk(&mut self, opcode: u8) -> InstructionInfo {
+        let src_reg = match (opcode >> 4) & 0x03 {
+            0x00 => Reg16::BC,
+            0x01 => Reg16::DE,
+            0x02 => Reg16::HL,
+            0x03 => Reg16::AF,
+            _ => panic!("Error push_r16stk")
+        };
+
+        let value = self.reg.dread(src_reg);
+
+        let lsb = value & 0x00FF;
+        let msb = value >> 8;
+
+        self.mem.write(self.sp - 1, msb as u8);
+        self.mem.write(self.sp - 2, lsb as u8);
+        self.sp -= 2;
+
+        InstructionInfo(1, 4)
     }
 
     pub fn prefix(&mut self) -> InstructionInfo {
