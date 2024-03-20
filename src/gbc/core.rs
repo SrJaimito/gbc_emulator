@@ -15,7 +15,7 @@ struct Core {
     prefix_enabled: bool,
 
     ime_enabled: bool,
-    ime_enable_request: bool,
+    ime_enable_request: u8,
 
     mem: Memory
 }
@@ -29,7 +29,7 @@ impl Core {
             sp: 0,
             prefix_enabled: false,
             ime_enabled: true,
-            ime_enable_request: false,
+            ime_enable_request: 0,
             mem: Memory::new()
         }
     }
@@ -255,6 +255,17 @@ impl Core {
                 },
 
                 _ => panic!("Error matching opcode block")
+            }
+        }
+    }
+
+    pub fn update_ime(&mut self) {
+        // Update IME if needed
+        if self.ime_enable_request != 0 {
+            self.ime_enable_request -= 1;
+
+            if self.ime_enable_request == 0 {
+                self.ime_enabled = true;
             }
         }
     }

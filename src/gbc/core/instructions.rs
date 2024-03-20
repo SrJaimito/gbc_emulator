@@ -932,8 +932,11 @@ impl Core {
         InstructionInfo(1, 4)
     }
 
-    pub fn reti(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn reti(&mut self) -> InstructionInfo {
+        // IME is set right after this instruction
+        self.ime_enable_request = 1;
+
+        self.ret()
     }
 
     pub fn jp_cond_imm16(&self, opcode: u8) -> InstructionInfo {
@@ -1010,12 +1013,18 @@ impl Core {
         unimplemented!()
     }
 
-    pub fn di(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn di(&mut self) -> InstructionInfo {
+        self.ime_enabled = false;
+        self.ime_enable_request = 0;
+
+        InstructionInfo(1, 1)
     }
 
-    pub fn ei(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn ei(&mut self) -> InstructionInfo {
+        // IME is set after the instruction following this one
+        self.ime_enable_request = 2;
+
+        InstructionInfo(1, 1)
     }
 
     pub fn rlc_r8(&self, opcode: u8) -> InstructionInfo {
