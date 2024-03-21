@@ -1,7 +1,7 @@
 use super::Core;
 use super::register_file::{Reg8, Reg16, Flag, map_r8, map_r16stk};
 
-pub struct InstructionInfo(u8, u8); // (size, cycles)
+pub struct InstructionInfo(pub u8, pub u8); // (size, cycles)
 
 impl Core {
 

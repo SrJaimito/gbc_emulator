@@ -34,7 +34,19 @@ impl Core {
         }
     }
 
-    pub fn execute(&mut self, opcode: u8) -> InstructionInfo {
+    pub fn execute(&mut self) {
+        let current_instruction = self.mem.read(self.pc);
+
+        let instruction_info = self.decode_and_execute(current_instruction);
+        let pc_offset = instruction_info.0;
+        let clock_cycles = instruction_info.1;
+
+        self.pc += pc_offset as u16;
+
+        self.update_ime();
+    }
+
+    fn decode_and_execute(&mut self, opcode: u8) -> InstructionInfo {
         if self.prefix_enabled {
             // Test bits 7-6
             match opcode >> 6 {
@@ -259,7 +271,7 @@ impl Core {
         }
     }
 
-    pub fn update_ime(&mut self) {
+    fn update_ime(&mut self) {
         // Update IME if needed
         if self.ime_enable_request != 0 {
             self.ime_enable_request -= 1;
