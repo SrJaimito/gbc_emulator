@@ -423,46 +423,31 @@ impl Core {
     }
 
     pub fn jr_cond_imm8(&mut self, opcode: u8) -> InstructionInfo {
-        let pc = self.pc as i32;
-        let imm = self.mem.read(self.pc + 1) as i32;
-
-        let cycles = match (opcode >> 3) & 0x03 {
+        match (opcode >> 3) & 0x03 {
             0x00 => {
                 if !self.reg.read_flag(Flag::Z) {
-                    self.pc = (pc + imm) as u16;
-                    3
-                } else {
-                    2
+                    return self.jr_imm8();
                 }
             },
             0x01 => {
                 if self.reg.read_flag(Flag::Z) {
-                    self.pc = (pc + imm) as u16;
-                    3
-                } else {
-                    2
+                    return self.jr_imm8();
                 }
             },
             0x02 => {
                 if !self.reg.read_flag(Flag::CY) {
-                    self.pc = (pc + imm) as u16;
-                    3
-                } else {
-                    2
+                    return self.jr_imm8();
                 }
             },
             0x03 => {
                 if self.reg.read_flag(Flag::CY) {
-                    self.pc = (pc + imm) as u16;
-                    3
-                } else {
-                    2
+                    return self.jr_imm8();
                 }
             },
             _ => panic!("Error jr_cond_imm8")
         };
 
-        InstructionInfo(2, cycles)
+        InstructionInfo(2, 2)
     }
 
     pub fn stop(&self) -> InstructionInfo {
