@@ -1253,6 +1253,8 @@ impl Core {
         self.reg.write_flag(Flag::N, false);
         self.reg.write_flag(Flag::H, false);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1296,6 +1298,8 @@ impl Core {
 
         self.reg.write_flag(Flag::N, false);
         self.reg.write_flag(Flag::H, false);
+
+        self.prefix_enabled = false;
 
         InstructionInfo(1, cycles)
     }
@@ -1343,6 +1347,8 @@ impl Core {
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, cy == 0x01);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1389,6 +1395,8 @@ impl Core {
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, cy == 0x01);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1427,6 +1435,8 @@ impl Core {
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, cy);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1464,6 +1474,8 @@ impl Core {
         self.reg.write_flag(Flag::N, false);
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, cy);
+
+        self.prefix_enabled = false;
 
         InstructionInfo(1, cycles)
     }
@@ -1505,6 +1517,8 @@ impl Core {
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, false);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1543,6 +1557,8 @@ impl Core {
         self.reg.write_flag(Flag::H, false);
         self.reg.write_flag(Flag::CY, cy);
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1566,6 +1582,8 @@ impl Core {
         self.reg.write_flag(Flag::Z, z);
         self.reg.write_flag(Flag::N, false);
         self.reg.write_flag(Flag::H, true);
+
+        self.prefix_enabled = false;
 
         InstructionInfo(1, cycles)
     }
@@ -1595,6 +1613,8 @@ impl Core {
             2
         };
 
+        self.prefix_enabled = false;
+
         InstructionInfo(1, cycles)
     }
 
@@ -1622,6 +1642,8 @@ impl Core {
 
             2
         };
+
+        self.prefix_enabled = false;
 
         InstructionInfo(1, cycles)
     }
