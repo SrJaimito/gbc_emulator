@@ -939,16 +939,47 @@ impl Core {
         self.ret()
     }
 
-    pub fn jp_cond_imm16(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn jp_cond_imm16(&mut self, opcode: u8) -> InstructionInfo {
+        match (opcode >> 3) & 0x03 {
+            0x00 => {
+                if !self.reg.read_flag(Flag::Z) {
+                    return self.jp_imm16();
+                }
+            },
+            0x01 => {
+                if self.reg.read_flag(Flag::Z) {
+                    return self.jp_imm16();
+                }
+            },
+            0x02 => {
+                if !self.reg.read_flag(Flag::CY) {
+                    return self.jp_imm16();
+                }
+            },
+            0x03 => {
+                if self.reg.read_flag(Flag::CY) {
+                    return self.jp_imm16();
+                }
+            },
+            _ => panic!("Error jp_cond_imm16")
+        }
+
+        InstructionInfo(3, 3)
     }
 
-    pub fn jp_imm16(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn jp_imm16(&mut self) -> InstructionInfo {
+        let lsb = self.mem.read(self.pc + 1) as u16;
+        let msb = self.mem.read(self.pc + 2) as u16;
+
+        self.pc = (msb << 8) | lsb;
+
+        InstructionInfo(0, 4)
     }
 
-    pub fn jp_hl(&self) -> InstructionInfo {
-        unimplemented!()
+    pub fn jp_hl(&mut self) -> InstructionInfo {
+        self.pc = self.reg.dread(Reg16::HL);
+
+        InstructionInfo(0, 1)
     }
 
     pub fn call_cond_imm16(&mut self, opcode: u8) -> InstructionInfo {
