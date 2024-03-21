@@ -1016,8 +1016,26 @@ impl Core {
         InstructionInfo(0, 6)
     }
 
-    pub fn rst_tgt3(&self, opcode: u8) -> InstructionInfo {
-        unimplemented!()
+    pub fn rst_tgt3(&mut self, opcode: u8) -> InstructionInfo {
+        let jump_addr: u16 = match (opcode >> 3) & 0x07 {
+            0x00 => 0x0000,
+            0x01 => 0x0008,
+            0x02 => 0x0010,
+            0x03 => 0x0018,
+            0x04 => 0x0020,
+            0x05 => 0x0028,
+            0x06 => 0x0030,
+            0x07 => 0x0038,
+            _ => panic!("Error rst_tgt3")
+        };
+
+        self.mem.write(self.sp - 1, (self.pc >> 8) as u8);
+        self.mem.write(self.sp - 2, (self.pc & 0x00FF) as u8);
+        self.sp -= 2;
+
+        self.pc = jump_addr;
+
+        InstructionInfo(0, 4)
     }
 
     pub fn pop_r16stk(&mut self, opcode: u8) -> InstructionInfo {
