@@ -1,12 +1,11 @@
 mod register_file;
 mod instructions;
-mod memory;
 
 use register_file::RegisterFile;
-use memory::Memory;
+use super::memory::Memory;
 use instructions::InstructionInfo;
 
-struct Core {
+struct Core<'a> {
     reg: RegisterFile,
 
     pc: u16,
@@ -17,12 +16,12 @@ struct Core {
     ime_enabled: bool,
     ime_enable_request: u8,
 
-    mem: Memory
+    mem: &'a mut Memory
 }
 
-impl Core {
+impl<'a> Core<'a> {
 
-    pub fn new() -> Self {
+    pub fn new(memory: &'a mut Memory) -> Self {
         Self {
             reg: RegisterFile::new(),
             pc: 0,
@@ -30,7 +29,7 @@ impl Core {
             prefix_enabled: false,
             ime_enabled: true,
             ime_enable_request: 0,
-            mem: Memory::new()
+            mem: memory
         }
     }
 
