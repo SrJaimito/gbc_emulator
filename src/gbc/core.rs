@@ -5,7 +5,7 @@ use register_file::RegisterFile;
 use super::memory::Memory;
 use instructions::InstructionInfo;
 
-struct Core<'a> {
+pub struct Core {
     reg: RegisterFile,
 
     pc: u16,
@@ -15,28 +15,25 @@ struct Core<'a> {
 
     ime_enabled: bool,
     ime_enable_request: u8,
-
-    mem: &'a mut Memory
 }
 
-impl<'a> Core<'a> {
+impl Core {
 
-    pub fn new(memory: &'a mut Memory) -> Self {
+    pub fn new() -> Self {
         Self {
             reg: RegisterFile::new(),
             pc: 0,
             sp: 0,
             prefix_enabled: false,
             ime_enabled: true,
-            ime_enable_request: 0,
-            mem: memory
+            ime_enable_request: 0
         }
     }
 
-    pub fn execute(&mut self) {
-        let current_instruction = self.mem.read(self.pc);
+    pub fn run_step(&mut self, memory: &mut Memory) {
+        let current_instruction = memory.read(self.pc);
 
-        let instruction_info = self.decode_and_execute(current_instruction);
+        let instruction_info = self.decode_and_execute(current_instruction, memory);
         let pc_offset = instruction_info.0;
         let clock_cycles = instruction_info.1;
 
@@ -45,28 +42,28 @@ impl<'a> Core<'a> {
         self.update_ime();
     }
 
-    fn decode_and_execute(&mut self, opcode: u8) -> InstructionInfo {
+    fn decode_and_execute(&mut self, opcode: u8, memory: &mut Memory) -> InstructionInfo {
         if self.prefix_enabled {
             // Test bits 7-6
             match opcode >> 6 {
                 0x00 => {
                     // Test bits 5-3
                     match (opcode >> 3) & 0x07 {
-                        0x00 => self.rlc_r8(opcode),
-                        0x01 => self.rrc_r8(opcode),
-                        0x02 => self.rl_r8(opcode),
-                        0x03 => self.rr_r8(opcode),
-                        0x04 => self.sla_r8(opcode),
-                        0x05 => self.sra_r8(opcode),
-                        0x06 => self.swap_r8(opcode),
-                        0x07 => self.srl_r8(opcode),
+                        0x00 => self.rlc_r8(opcode, memory),
+                        0x01 => self.rrc_r8(opcode, memory),
+                        0x02 => self.rl_r8(opcode, memory),
+                        0x03 => self.rr_r8(opcode, memory),
+                        0x04 => self.sla_r8(opcode, memory),
+                        0x05 => self.sra_r8(opcode, memory),
+                        0x06 => self.swap_r8(opcode, memory),
+                        0x07 => self.srl_r8(opcode, memory),
                         _ => panic!("Error decoding prefix instruction (1)")
                     }
                 },
 
-                0x01 => self.bit_b3_r8(opcode),
-                0x02 => self.res_b3_r8(opcode),
-                0x03 => self.set_b3_r8(opcode),
+                0x01 => self.bit_b3_r8(opcode, memory),
+                0x02 => self.res_b3_r8(opcode, memory),
+                0x03 => self.set_b3_r8(opcode, memory),
                 _ => panic!("Error decoding prefix instruction (2)")
             }
         } else {
@@ -83,20 +80,20 @@ impl<'a> Core<'a> {
                                 // Test bits 4-3
                                 match (opcode >> 3) & 0x03 {
                                     0x00 => self.nop(),
-                                    0x01 => self.ld_imm16_sp(),
+                                    0x01 => self.ld_imm16_sp(memory),
                                     0x02 => self.stop(),
-                                    0x03 => self.jr_imm8(),
+                                    0x03 => self.jr_imm8(memory),
                                     _ => panic!("Error decoding instruction (1)")
                                 }
                             } else {
-                                self.jr_cond_imm8(opcode)
+                                self.jr_cond_imm8(opcode, memory)
                             }
                         },
                         
                         0x01 => {
                             // Test bit 3
                             if (opcode >> 3) == 0x00 {
-                                self.ld_r16_imm16(opcode)
+                                self.ld_r16_imm16(opcode, memory)
                             } else {
                                 self.add_hl_r16(opcode)
                             }
@@ -105,9 +102,9 @@ impl<'a> Core<'a> {
                         0x02 => {
                             // Test bit 3
                             if (opcode >> 3) == 0x00 {
-                                self.ld_r16mem_a(opcode)
+                                self.ld_r16mem_a(opcode, memory)
                             } else {
-                                self.ld_a_r16mem(opcode)
+                                self.ld_a_r16mem(opcode, memory)
                             }
                         },
 
@@ -120,11 +117,11 @@ impl<'a> Core<'a> {
                             }
                         },
 
-                        0x04 => self.inc_r8(opcode),
+                        0x04 => self.inc_r8(opcode, memory),
 
-                        0x05 => self.dec_r8(opcode),
+                        0x05 => self.dec_r8(opcode, memory),
 
-                        0x06 => self.ld_r8_imm8(opcode),
+                        0x06 => self.ld_r8_imm8(opcode, memory),
 
                         0x07 => {
                             // Test bits 5-3
@@ -151,7 +148,7 @@ impl<'a> Core<'a> {
                     if opcode == 0x76 {
                         self.halt()
                     } else {
-                        self.ld_r8_r8(opcode)
+                        self.ld_r8_r8(opcode, memory)
                     }
                 },
 
@@ -159,14 +156,14 @@ impl<'a> Core<'a> {
                 0x02 => {
                     // Test bits 5-3
                     match (opcode >> 3) & 0x07 {
-                        0x00 => self.add_a_r8(opcode),
-                        0x01 => self.adc_a_r8(opcode),
-                        0x02 => self.sub_a_r8(opcode),
-                        0x03 => self.sbc_a_r8(opcode),
-                        0x04 => self.and_a_r8(opcode),
-                        0x05 => self.xor_a_r8(opcode),
-                        0x06 => self.or_a_r8(opcode),
-                        0x07 => self.cp_a_r8(opcode),
+                        0x00 => self.add_a_r8(opcode, memory),
+                        0x01 => self.adc_a_r8(opcode, memory),
+                        0x02 => self.sub_a_r8(opcode, memory),
+                        0x03 => self.sbc_a_r8(opcode, memory),
+                        0x04 => self.and_a_r8(opcode, memory),
+                        0x05 => self.xor_a_r8(opcode, memory),
+                        0x06 => self.or_a_r8(opcode, memory),
+                        0x07 => self.cp_a_r8(opcode, memory),
                         _ => panic!("Error decoding instruction (4)")
                     }
                 },
@@ -178,14 +175,14 @@ impl<'a> Core<'a> {
                         0x00 => {
                             // Test bit 5
                             if (opcode >> 5) & 0x01 == 0x00 {
-                                self.ret_cond(opcode)
+                                self.ret_cond(opcode, memory)
                             } else {
                                 // Test bits 4-3
                                 match (opcode >> 3) & 0x3 {
-                                    0x00 => self.ldh_imm8_a(),
-                                    0x01 => self.add_sp_imm8(),
-                                    0x02 => self.ldh_a_imm8(),
-                                    0x03 => self.ld_hl_sp_imm8(),
+                                    0x00 => self.ldh_imm8_a(memory),
+                                    0x01 => self.add_sp_imm8(memory),
+                                    0x02 => self.ldh_a_imm8(memory),
+                                    0x03 => self.ld_hl_sp_imm8(memory),
                                     _ => panic!("Error decoding instruction (5)")
                                 }
                             }
@@ -194,12 +191,12 @@ impl<'a> Core<'a> {
                         0x01 => {
                             // Test bit 3
                             if (opcode >> 3) & 0x01 == 0x00 {
-                                self.pop_r16stk(opcode)
+                                self.pop_r16stk(opcode, memory)
                             } else {
                                 // Test bits 5-4
                                 match (opcode >> 4) & 0x03 {
-                                    0x00 => self.ret(),
-                                    0x01 => self.reti(),
+                                    0x00 => self.ret(memory),
+                                    0x01 => self.reti(memory),
                                     0x02 => self.jp_hl(),
                                     0x03 => self.ld_sp_hl(),
                                     _ => panic!("Error decoding instruction (6)")
@@ -210,14 +207,14 @@ impl<'a> Core<'a> {
                         0x02 => {
                             // Test bit 5
                             if (opcode >> 5) & 0x01 == 0x00 {
-                                self.jp_cond_imm16(opcode)
+                                self.jp_cond_imm16(opcode, memory)
                             } else {
                                 // Test bits 4-3
                                 match (opcode >> 3) & 0x03 {
-                                    0x00 => self.ldh_c_a(),
-                                    0x01 => self.ld_imm16_a(),
-                                    0x02 => self.ldh_a_c(),
-                                    0x03 => self.ld_a_imm16(),
+                                    0x00 => self.ldh_c_a(memory),
+                                    0x01 => self.ld_imm16_a(memory),
+                                    0x02 => self.ldh_a_c(memory),
+                                    0x03 => self.ld_a_imm16(memory),
                                     _ => panic!("Error decoding instruction (7)")
                                 }
                             }
@@ -225,7 +222,7 @@ impl<'a> Core<'a> {
 
                         0x03 => {
                             match opcode {
-                                0xC3 => self.jp_imm16(),
+                                0xC3 => self.jp_imm16(memory),
                                 0xCB => self.prefix(),
                                 0xF3 => self.di(),
                                 0xFB => self.ei(),
@@ -233,33 +230,33 @@ impl<'a> Core<'a> {
                             }
                         },
 
-                        0x04 => self.call_cond_imm16(opcode),
+                        0x04 => self.call_cond_imm16(opcode, memory),
 
                         0x05 => {
                            // Test bit 3
                            if (opcode >> 3) & 0x01 == 0x00 {
-                               self.push_r16stk(opcode)
+                               self.push_r16stk(opcode, memory)
                            } else {
-                               self.call_imm16()
+                               self.call_imm16(memory)
                            }
                         },
 
                         0x06 => {
                             // Test bits 5-3
                             match (opcode >> 3) & 0x07 {
-                                0x00 => self.add_a_imm8(),
-                                0x01 => self.adc_a_imm8(),
-                                0x02 => self.sub_a_imm8(),
-                                0x03 => self.sbc_a_imm8(),
-                                0x04 => self.and_a_imm8(),
-                                0x05 => self.xor_a_imm8(),
-                                0x06 => self.or_a_imm8(),
-                                0x07 => self.cp_a_imm8(),
+                                0x00 => self.add_a_imm8(memory),
+                                0x01 => self.adc_a_imm8(memory),
+                                0x02 => self.sub_a_imm8(memory),
+                                0x03 => self.sbc_a_imm8(memory),
+                                0x04 => self.and_a_imm8(memory),
+                                0x05 => self.xor_a_imm8(memory),
+                                0x06 => self.or_a_imm8(memory),
+                                0x07 => self.cp_a_imm8(memory),
                                 _ => panic!("Error decoding instruction (9)")
                             }
                         },
 
-                        0x07 => self.rst_tgt3(opcode),
+                        0x07 => self.rst_tgt3(opcode, memory),
 
                         _ => panic!("Error decoding instruction (10)")
                    }
