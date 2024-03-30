@@ -1,3 +1,5 @@
+use super::core::interrupt::Interrupt;
+
 // Memory map
 
 const MEMORY_START: usize = 0x0000;
@@ -58,8 +60,10 @@ const OTHER_SIZE: usize = OTHER_END - OTHER_START + 1;
 
 // Memory mapped registers
 
+const IF_ADDR: usize = 0xFF0F;
 const VBK_ADDR: usize = 0xFF4F;
 const SVBK_ADDR: usize = 0xFF70;
+const IE_ADDR: usize = 0xFFFF;
 
 pub struct Memory {
     fixed_memory: [u8; MEMORY_SIZE],
@@ -158,6 +162,51 @@ impl Memory {
         }
 
         self.fixed_memory[addr] = value;
+    }
+
+    pub fn next_pending_interrupt(&self) -> Option<Interrupt> {
+        let pending_interrupts = self.fixed_memory[IF_ADDR];
+        let enabled_interrupts = self.fixed_memory[IE_ADDR];
+
+        for i in 0..=4 {
+            let pending_mask = pending_interrupts & (0x01 << i);
+            let enabled_mask = enabled_interrupts & (0x01 << i);
+             
+            if pending_mask != 0 && enabled_mask != 0 {
+                match i {
+                    0 => {
+                        return Some(Interrupt::VBlank);
+                    },
+                    1 => {
+                        return Some(Interrupt::Lcd);
+                    },
+                    2 => {
+                        return Some(Interrupt::Timer);
+                    },
+                    3 => {
+                        return Some(Interrupt::Serial);
+                    },
+                    4 => {
+                        return Some(Interrupt::Joypad);
+                    },
+                    _ => {}
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn notify_interrupt(&mut self, interrupt: Interrupt) {
+        let bit: u8 = match interrupt {
+            Interrupt::VBlank => 0,
+            Interrupt::Lcd => 1,
+            Interrupt::Timer => 2,
+            Interrupt::Serial => 3,
+            Interrupt::Joypad => 4
+        };
+
+        self.fixed_memory[IF_ADDR] |= 0x01 << bit;
     }
 
 }

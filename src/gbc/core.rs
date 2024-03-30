@@ -1,5 +1,6 @@
 mod register_file;
 mod instructions;
+pub mod interrupt;
 
 use register_file::RegisterFile;
 use super::memory::Memory;
@@ -30,7 +31,7 @@ impl Core {
         }
     }
 
-    pub fn run_step(&mut self, memory: &mut Memory) {
+    pub fn run_step(&mut self, memory: &mut Memory) -> u8 {
         let current_instruction = memory.read(self.pc);
 
         let instruction_info = self.decode_and_execute(current_instruction, memory);
@@ -40,6 +41,8 @@ impl Core {
         self.pc += pc_offset as u16;
 
         self.update_ime();
+
+        clock_cycles
     }
 
     fn decode_and_execute(&mut self, opcode: u8, memory: &mut Memory) -> InstructionInfo {

@@ -48,8 +48,18 @@ impl GameBoyColor {
                 }
             }
 
-            // Next CPU instruction
-            // self.core.run_step(&mut self.memory);
+            // Should we move to an interrupt?
+            let attending_interrupt = if let Some(interrupt) = self.memory.next_pending_interrupt() {
+                self.core.attend_interrupt(interrupt, &mut self.memory)
+            } else {
+                false
+            };
+
+            let wait_cpu_cycles = if attending_interrupt {
+                5
+            } else {
+                self.core.run_step(&mut self.memory)
+            };
 
             // Update display
             self.display.update();
