@@ -1,91 +1,163 @@
+// Memory map
+
+const MEMORY_START: usize = 0x0000;
+const MEMORY_END: usize = 0xFFFF;
+const MEMORY_SIZE: usize = MEMORY_END - MEMORY_START + 1;
+
+const CARTRIDGE_START: usize = MEMORY_START;
+const CARTRIDGE_END: usize = 0x7FFF;
+const CARTRIDGE_SIZE: usize = CARTRIDGE_END - CARTRIDGE_START + 1;
+
 const VRAM_START: usize = 0x8000;
 const VRAM_END: usize = 0x9FFF;
-const VRAM_SIZE: usize = 8 * 1024;
+const VRAM_SIZE: usize = VRAM_END - VRAM_START + 1;
 
-const WRAM_SW_START: usize = 0xC000 + 4 * 1024;
-const WRAM_SW_END: usize = 0xDFFF;
-const WRAM_SW_SIZE: usize = 4 * 1024;
+const VRAM_CHAR_DATA_START: usize = VRAM_START;
+const VRAM_CHAR_DATA_END: usize = 0x97FF;
+const VRAM_CHAR_DATA_SIZE: usize = VRAM_CHAR_DATA_END - VRAM_CHAR_DATA_START + 1;
+
+const VRAM_BG_DATA_1_START: usize = VRAM_CHAR_DATA_END + 1;
+const VRAM_BG_DATA_1_END: usize = 0x9BFF;
+const VRAM_BG_DATA_1_SIZE: usize = VRAM_BG_DATA_1_END - VRAM_BG_DATA_1_START + 1;
+
+const VRAM_BG_DATA_2_START: usize = VRAM_BG_DATA_1_END + 1;
+const VRAM_BG_DATA_2_END: usize = VRAM_END;
+const VRAM_BG_DATA_2_SIZE: usize = VRAM_BG_DATA_2_END - VRAM_BG_DATA_2_START + 1;
+
+const EXT_WRAM_START: usize = 0xA000;
+const EXT_WRAM_END: usize = 0xBFFF;
+const EXT_WRAM_SIZE: usize = EXT_WRAM_END - EXT_WRAM_START + 1;
+
+const WRAM_START: usize = 0xC000;
+const WRAM_END: usize = 0xDFFF;
+const WRAM_SIZE: usize = WRAM_END - WRAM_START + 1;
+
+const FIXED_WRAM_START: usize = WRAM_START;
+const FIXED_WRAM_END: usize = 0xCFFF;
+const FIXED_WRAM_SIZE: usize = FIXED_WRAM_END - FIXED_WRAM_START + 1;
+
+const SW_WRAM_START: usize = FIXED_WRAM_END + 1;
+const SW_WRAM_END: usize = WRAM_END;
+const SW_WRAM_SIZE: usize = SW_WRAM_END - SW_WRAM_START + 1;
+
+const ECHO_WRAM_START: usize = 0xE000;
+const ECHO_WRAM_END: usize = 0xFDFF;
+const ECHO_WRAM_SIZE: usize = ECHO_WRAM_END - ECHO_WRAM_START + 1;
+
+const OAM_START: usize = 0xFE00;
+const OAM_END: usize = 0xFEBF;
+const OAM_SIZE: usize = OAM_END - OAM_START + 1;
+
+const NOT_USABLE_START: usize = 0xFEA0;
+const NOT_USABLE_END: usize = 0xFEFF;
+const NOT_USABLE_SIZE: usize = NOT_USABLE_END - NOT_USABLE_START + 1;
+
+const OTHER_START: usize = 0xFF00;
+const OTHER_END: usize = MEMORY_END;
+const OTHER_SIZE: usize = OTHER_END - OTHER_START + 1;
+
+// Memory mapped registers
 
 const VBK_ADDR: usize = 0xFF4F;
 const SVBK_ADDR: usize = 0xFF70;
 
 pub struct Memory {
-    memory: [u8; 0x10000],
+    fixed_memory: [u8; MEMORY_SIZE],
 
-    vram_extra_bank: [u8; VRAM_SIZE],
-    wram_extra_banks: [[u8; WRAM_SW_SIZE]; 7]
+    vram_banks: [[u8; VRAM_SIZE]; 2],
+    active_vram_bank: usize,
+
+    sw_wram_banks: [[u8; SW_WRAM_SIZE]; 7],
+    active_sw_wram_bank: usize
 }
 
 impl Memory {
 
     pub fn new() -> Self {
         Self {
-            memory: [0; 0x10000],
-            vram_extra_bank: [0; VRAM_SIZE],
-            wram_extra_banks: [[0; WRAM_SW_SIZE]; 7]
+            fixed_memory: [0; MEMORY_SIZE],
+
+            vram_banks: [[0; VRAM_SIZE]; 2],
+            active_vram_bank: 0,
+
+            sw_wram_banks: [[0; SW_WRAM_SIZE]; 7],
+            active_sw_wram_bank: 0
         }
     }
 
     pub fn read(&self, addr: u16) -> u8 {
         let addr = addr as usize;
 
+        // VRAM
+        if addr >= VRAM_START && addr <= VRAM_END {
+            return self.vram_banks[self.active_vram_bank][addr - VRAM_START];
+        }
+
+        // Switchable WRAM
+        if addr >= SW_WRAM_START && addr <= SW_WRAM_END {
+            return self.sw_wram_banks[self.active_sw_wram_bank][addr - SW_WRAM_START];
+        }
+
         // Echo RAM
-        if addr >= 0xE000 && addr <= 0xFDFF {
-            return self.memory[addr - 0x2000];
+        if addr >= ECHO_WRAM_START && addr <= ECHO_WRAM_END {
+            return self.read((addr - (ECHO_WRAM_START - WRAM_START)) as u16);
         }
 
-        // Not usable RAM
-        if addr >= 0xFEA0 && addr <= 0xFEFF {
+        // Not usable
+        if addr >= NOT_USABLE_START && addr <= NOT_USABLE_END {
             let nibble = (addr & 0x00F0) as u8;
-            return nibble | (nibble >> 8);
+            return nibble | (nibble >> 4);
         }
 
-        // VRAM bank selection
-        if addr == VBK_ADDR {
-            return 0xFE | (self.memory[VBK_ADDR] & 0x01);
+        // Memory mapped registers
+        if addr >= OTHER_START {
+            // VRAM bank selection
+            if addr == VBK_ADDR {
+                return 0xFE | (self.fixed_memory[VBK_ADDR] & 0x01);
+            }
         }
 
         // Normal behavior
-        self.memory[addr]
+        self.fixed_memory[addr]
     }
 
     pub fn write(&mut self, addr: u16, value: u8) {
         let addr = addr as usize;
 
+        // VRAM
+        if addr >= VRAM_START && addr <= VRAM_END {
+            self.vram_banks[self.active_vram_bank][addr - VRAM_START] = value;
+        }
+
+        // Switchable WRAM
+        if addr >= SW_WRAM_START && addr <= SW_WRAM_END {
+            self.sw_wram_banks[self.active_sw_wram_bank][addr - SW_WRAM_START] = value;
+        }
+
         // Echo RAM
-        if addr >= 0xE000 && addr <= 0xFDFF {
-            self.memory[addr - 0x2000] = value;
-            return;
+        if addr >= ECHO_WRAM_START && addr <= ECHO_WRAM_END {
+            return self.write((addr - (ECHO_WRAM_START - WRAM_START)) as u16, value);
         }
 
-        // VRAM bank selection
-        if addr == VBK_ADDR {
-            // Switch VRAM banks if requested
-            if (self.memory[VBK_ADDR] & 0x01) != (value & 0x01) {
-                for i in 0..VRAM_SIZE {
-                    let aux = self.memory[VRAM_START + i];
-                    self.memory[VRAM_START + i] = self.vram_extra_bank[i];
-                    self.vram_extra_bank[i] = aux;
-                }
+        if addr >= OTHER_START {
+            // VRAM bank selection
+            if addr == VBK_ADDR {
+                self.active_vram_bank = (value & 0x01) as usize;
+            }
+
+            // WRAM bank selection
+            if addr == SVBK_ADDR {
+                let selected_bank = (value & 0x07) as usize;
+
+                self.active_sw_wram_bank = if selected_bank != 0 {
+                    selected_bank - 1
+                } else {
+                    0
+                };
             }
         }
 
-        // WRAM bank selection
-        if addr == SVBK_ADDR {
-            // Switch WRAM banks
-            let mut old_bank = self.memory[SVBK_ADDR] & 0x07;
-            old_bank = if old_bank != 0 { old_bank - 1 } else { 0 };
-
-            let mut new_bank = value & 0x07;
-            new_bank = if old_bank != 0 { new_bank - 1 } else { 0 };
-
-            for i in 0..WRAM_SW_SIZE {
-                self.wram_extra_banks[old_bank as usize][i] = self.memory[WRAM_SW_START + i];
-                self.memory[WRAM_SW_START + i] = self.wram_extra_banks[new_bank as usize][i];
-            }
-        }
-
-        self.memory[addr] = value;
+        self.fixed_memory[addr] = value;
     }
 
 }
