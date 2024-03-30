@@ -1,6 +1,6 @@
 mod gbc;
 
 fn main() {
-    println!("Hello, world!");
+    gbc::GameBoyColor::new().run();
 }
 
