@@ -1,3 +1,5 @@
+use std::time::{Instant, Duration};
+
 extern crate sdl2;
 
 use sdl2::Sdl;
@@ -8,7 +10,7 @@ mod core;
 mod memory;
 mod display;
 
-use core::Core;
+use core::{Core, SLOW_CLK_PERIOD};
 use memory::Memory;
 use display::Display;
 
@@ -39,6 +41,11 @@ impl GameBoyColor {
     }
 
     pub fn run(&mut self) {
+        let mut cpu_last_time = Instant::now();
+        let mut waiting_cpu_time = 0u128;
+
+        let mut display_last_time = Instant::now();
+
         'main_loop: loop {
             // Check input events
             for event in self.sdl_event_pump.poll_iter() {
@@ -48,21 +55,32 @@ impl GameBoyColor {
                 }
             }
 
-            // Should we move to an interrupt?
-            let attending_interrupt = if let Some(interrupt) = self.memory.next_pending_interrupt() {
-                self.core.attend_interrupt(interrupt, &mut self.memory)
-            } else {
-                false
-            };
+            // Did we finish executing last instruction?
+            if cpu_last_time.elapsed().as_nanos() >= waiting_cpu_time {
+                cpu_last_time = Instant::now();
 
-            let wait_cpu_cycles = if attending_interrupt {
-                5
-            } else {
-                self.core.run_step(&mut self.memory)
-            };
+                // Should we move to an interrupt?
+                let attending_interrupt = if let Some(interrupt) = self.memory.next_pending_interrupt() {
+                    self.core.attend_interrupt(interrupt, &mut self.memory)
+                } else {
+                    false
+                };
 
-            // Update display
-            self.display.update();
+                let waiting_cpu_cycles = if attending_interrupt {
+                    20
+                } else {
+                    self.core.run_step(&mut self.memory) * 4
+                };
+
+                waiting_cpu_time = (waiting_cpu_cycles as u128) * self.core.current_clk_period();
+            }
+
+            // Update display (assuming too much about time synchronization??? Review this timing)
+            if display_last_time.elapsed().as_nanos() >= SLOW_CLK_PERIOD {
+                display_last_time = Instant::now();
+
+                self.display.update(&self.memory);
+            }
         }
     }
 

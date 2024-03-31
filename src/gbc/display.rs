@@ -5,8 +5,10 @@ use sdl2::render::WindowCanvas;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
 
-const SCREEN_WIDTH: u32 = 160;
-const SCREEN_HEIGHT: u32 = 144;
+use super::Memory;
+
+const LCD_WIDTH: u32 = 160;
+const LCD_HEIGHT: u32 = 144;
 const WINDOW_SCALE: u32 = 4;
 
 const BACKGROUND_WIDTH: usize = 256;
@@ -24,8 +26,8 @@ impl Display {
 
         let window = video_subsystem.window(
                 "Game Boy Color",
-                SCREEN_WIDTH * WINDOW_SCALE,
-                SCREEN_HEIGHT * WINDOW_SCALE
+                LCD_WIDTH * WINDOW_SCALE,
+                LCD_HEIGHT * WINDOW_SCALE
             )
             .position_centered()
             .build()
@@ -37,15 +39,15 @@ impl Display {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, memory: &Memory) {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
 
         self.canvas.set_draw_color(Color::RGB(255, 255, 255));
         let _ = self.canvas.draw_line(Point::new(0, 0),
             Point::new(
-                (SCREEN_WIDTH * WINDOW_SCALE / 2) as i32,
-                (SCREEN_HEIGHT * WINDOW_SCALE / 2) as i32
+                (LCD_WIDTH * WINDOW_SCALE / 2) as i32,
+                (LCD_HEIGHT * WINDOW_SCALE / 2) as i32
             )
         );
 
