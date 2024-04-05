@@ -1,4 +1,4 @@
-use std::time::{Instant, Duration};
+use std::time::{Instant};
 
 extern crate sdl2;
 
@@ -10,9 +10,13 @@ mod core;
 mod memory;
 mod display;
 
-use core::{Core, SLOW_CLK_PERIOD};
+use core::Core;
 use memory::Memory;
 use display::Display;
+
+// Clock periods (ns)
+const SLOW_CLK_PERIOD: u128 = 238;
+const FAST_CLK_PERIOD: u128 = 119;
 
 pub struct GameBoyColor {
     sdl_context: Sdl,
@@ -47,10 +51,9 @@ impl GameBoyColor {
     }
 
     pub fn run(&mut self) {
-        let mut cpu_last_time = Instant::now();
-        let mut waiting_cpu_time = 0u128;
-
-        let mut display_last_time = Instant::now();
+        let mut fast_clock_timer = Instant::now();
+        let mut waiting_cpu_cycles = 0u8;
+        let mut waiting_display_cycles = 0u8;
 
         'main_loop: loop {
             // Check input events
@@ -61,31 +64,34 @@ impl GameBoyColor {
                 }
             }
 
-            // Did we finish executing last instruction?
-            if cpu_last_time.elapsed().as_nanos() >= waiting_cpu_time {
-                cpu_last_time = Instant::now();
+            // Fast clock cycle timing
+            if fast_clock_timer.elapsed().as_nanos() >= FAST_CLK_PERIOD {
+                fast_clock_timer = Instant::now();
 
-                // Should we move to an interrupt?
-                let attending_interrupt = if let Some(interrupt) = self.memory.next_pending_interrupt() {
-                    self.core.attend_interrupt(interrupt, &mut self.memory)
-                } else {
-                    false
-                };
+                if waiting_cpu_cycles == 0 {
+                    // Should we move to an interrupt?
+                    let attending_interrupt = if let Some(interrupt) = self.memory.next_pending_interrupt() {
+                        self.core.attend_interrupt(interrupt, &mut self.memory)
+                    } else {
+                        false
+                    };
 
-                let waiting_cpu_cycles = if attending_interrupt {
-                    20
-                } else {
-                    self.core.run_step(&mut self.memory) * 4
-                };
+                    waiting_cpu_cycles = if attending_interrupt {
+                        20
+                    } else {
+                        self.core.run_step(&mut self.memory) * 4
+                    };
+                }
 
-                waiting_cpu_time = (waiting_cpu_cycles as u128) * self.core.current_clk_period();
-            }
+                // Update display each two fast cock cycles
+                if waiting_display_cycles == 0 {
+                    self.display.update(&self.memory);
 
-            // Update display (assuming too much about time synchronization??? Review this timing)
-            if display_last_time.elapsed().as_nanos() >= SLOW_CLK_PERIOD {
-                display_last_time = Instant::now();
+                    waiting_display_cycles = 2;
+                }
 
-                self.display.update(&self.memory);
+                waiting_cpu_cycles -= 1;
+                waiting_display_cycles -= 1;
             }
         }
     }

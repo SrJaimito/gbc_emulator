@@ -6,10 +6,6 @@ use register_file::RegisterFile;
 use super::memory::Memory;
 use instructions::InstructionInfo;
 
-// Speed modes
-pub const SLOW_CLK_PERIOD: u128 = 238;
-const FAST_CLK_PERIOD: u128 = 119;
-
 #[derive(Clone, Copy)]
 enum SpeedMode {
     Slow,
@@ -44,11 +40,8 @@ impl Core {
         }
     }
 
-    pub fn current_clk_period(&self) -> u128 {
-        match self.speed_mode {
-            SpeedMode::Slow => SLOW_CLK_PERIOD,
-            SpeedMode::Fast => FAST_CLK_PERIOD
-        }
+    pub fn current_clk_period(&self) -> SpeedMode {
+        self.speed_mode
     }
 
     pub fn run_step(&mut self, memory: &mut Memory) -> u8 {
