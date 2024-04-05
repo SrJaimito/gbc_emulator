@@ -3,7 +3,6 @@ extern crate sdl2;
 use sdl2::Sdl;
 use sdl2::render::WindowCanvas;
 use sdl2::pixels::Color;
-use sdl2::rect::Point;
 
 use super::Memory;
 
@@ -16,7 +15,9 @@ const BACKGROUND_HEIGHT: usize = 256;
 
 pub struct Display {
     canvas: WindowCanvas,
-    background: [[u8; BACKGROUND_WIDTH]; BACKGROUND_HEIGHT]
+
+    background: [[u8; BACKGROUND_WIDTH]; BACKGROUND_HEIGHT],
+    current_pixel: (u8, u8)
 }
 
 impl Display {
@@ -35,22 +36,24 @@ impl Display {
 
         Self {
             canvas: window.into_canvas().build().unwrap(),
-            background: [[0; BACKGROUND_WIDTH]; BACKGROUND_HEIGHT]
+            background: [[0; BACKGROUND_WIDTH]; BACKGROUND_HEIGHT],
+            current_pixel: (0, 0)
         }
     }
 
     pub fn update(&mut self, memory: &Memory) {
-        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-        self.canvas.clear();
+        let lcdc = memory.get_lcdc();
 
-        self.canvas.set_draw_color(Color::RGB(255, 255, 255));
-        let _ = self.canvas.draw_line(Point::new(0, 0),
-            Point::new(
-                (LCD_WIDTH * WINDOW_SCALE / 2) as i32,
-                (LCD_HEIGHT * WINDOW_SCALE / 2) as i32
-            )
-        );
+        // Is screen enabled?
+        if (lcdc >> 7) != 0 {
+            let bg_x = (memory.get_scx() + self.current_pixel.0) % (BACKGROUND_WIDTH as u8);
+            let bg_y = (memory.get_scy() + self.current_pixel.1) % (BACKGROUND_HEIGHT as u8);
+        } else {
+            self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+            self.canvas.clear();
+        }
 
+        // Draw canvas
         self.canvas.present();
     }
 

@@ -61,6 +61,9 @@ const OTHER_SIZE: usize = OTHER_END - OTHER_START + 1;
 // Memory mapped registers
 
 const IF_ADDR: usize = 0xFF0F;
+const LCDC_ADDR: usize = 0xFF40;
+const SCY_ADDR: usize = 0xFF42;
+const SCX_ADDR: usize = 0xFF43;
 const VBK_ADDR: usize = 0xFF4F;
 const SVBK_ADDR: usize = 0xFF70;
 const IE_ADDR: usize = 0xFFFF;
@@ -207,6 +210,18 @@ impl Memory {
         };
 
         self.fixed_memory[IF_ADDR] |= 0x01 << bit;
+    }
+
+    pub fn get_lcdc(&self) -> u8 {
+        self.read(LCDC_ADDR as u16)
+    }
+
+    pub fn get_scx(&self) -> u8 {
+        self.read(SCX_ADDR as u16)
+    }
+
+    pub fn get_scy(&self) -> u8 {
+        self.read(SCY_ADDR as u16)
     }
 
 }
