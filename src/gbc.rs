@@ -40,6 +40,12 @@ impl GameBoyColor {
         }
     }
 
+    pub fn load_rom(&mut self, rom: Vec<u8>) {
+        for (addr, byte) in rom.into_iter().enumerate() {
+            self.memory.write(addr as u16, byte);
+        }
+    }
+
     pub fn run(&mut self) {
         let mut cpu_last_time = Instant::now();
         let mut waiting_cpu_time = 0u128;
